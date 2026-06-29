@@ -90,6 +90,10 @@ allprojects {
 
     plugins.withId("java") { the<org.gradle.api.plugins.JavaPluginExtension>().withSourcesJar() }
     plugins.withId("java-library") { the<org.gradle.api.plugins.JavaPluginExtension>().withSourcesJar() }
+    plugins.withId("com.vanniktech.maven.publish") {
+        tasks.withType<org.gradle.api.tasks.bundling.Jar>().matching { it.name == "sourcesJar" }.configureEach { /* ensure task exists */ }
+        publishing { publications.withType<MavenPublication>().configureEach { artifact(tasks.named("sourcesJar")) { classifier = "sources" } } }
+    }
 }
 
 apiValidation {
