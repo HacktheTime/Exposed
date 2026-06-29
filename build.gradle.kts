@@ -92,30 +92,11 @@ allprojects {
 subprojects {
     if (name == "exposed-bom" || name in sampleProjects) return@subprojects
 
-    val sourcesJarTaskProvider = if (tasks.names.contains("sourcesJar")) {
-        tasks.named("sourcesJar", Jar::class.java)
-    } else {
-        tasks.register<Jar>("sourcesJar") {
-            archiveClassifier.set("sources")
-            from("src/main/java")
-            from("src/main/kotlin")
-            from("src/main/groovy")
-        }
-    }
-
     plugins.withId("com.vanniktech.maven.publish") {
-        publishing {
-            publications.withType<org.gradle.api.publish.maven.MavenPublication>().configureEach {
-                // If a sources artifact is already present, don't add ours again
-                val hasSources = artifacts.any { it.extension == "jar" && it.classifier == "sources" }
-                if (!hasSources) {
-                    artifact(tasks.named("sourcesJar"))
-                }
-            }
-        }
+        // do nothing here for sourcesJar
     }
-
 }
+
 
 
 
