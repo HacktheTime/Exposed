@@ -106,10 +106,15 @@ subprojects {
     plugins.withId("com.vanniktech.maven.publish") {
         publishing {
             publications.withType<org.gradle.api.publish.maven.MavenPublication>().configureEach {
-                artifact(sourcesJarTaskProvider)
+                // If a sources artifact is already present, don't add ours again
+                val hasSources = artifacts.any { it.extension == "jar" && it.classifier == "sources" }
+                if (!hasSources) {
+                    artifact(tasks.named("sourcesJar"))
+                }
             }
         }
     }
+
 }
 
 
