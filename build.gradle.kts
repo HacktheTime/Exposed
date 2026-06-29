@@ -89,9 +89,8 @@ allprojects {
         }
     }
 
-    java {
-        withSourcesJar()
-    }
+    plugins.withId("java") { the<JavaPluginExtension>().withSourcesJar() }
+    plugins.withId("java-library") { the<org.gradle.api.plugins.JavaPluginExtension>().withSourcesJar() }
 }
 
 apiValidation {
