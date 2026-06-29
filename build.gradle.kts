@@ -8,7 +8,6 @@ plugins {
     id(libs.plugins.detekt.get().pluginId) apply true
     alias(libs.plugins.binary.compatibility.validator)
     id(libs.plugins.docker.compose.get().pluginId)
-//t
     alias(libs.plugins.dokka)
     alias(libs.plugins.maven.publish)
     alias(libs.plugins.kover)

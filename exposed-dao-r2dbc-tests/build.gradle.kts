@@ -71,7 +71,7 @@ tasks.withType<KotlinCompile>().configureEach {
 }
 
 tasks.withType<JavaCompile>().configureEach {
-    targetCompatibility = "17"
+    targetCompatibility = "21"
 }
 
 tasks.withType<Test>().configureEach {
