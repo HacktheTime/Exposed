@@ -87,19 +87,29 @@ allprojects {
             signPublicationIfKeyPresent(this@allprojects, this)
         }
     }
+}
 
-    plugins.withId("java") { the<org.gradle.api.plugins.JavaPluginExtension>().withSourcesJar() }
-    plugins.withId("java-library") { the<org.gradle.api.plugins.JavaPluginExtension>().withSourcesJar() }
+subprojects {
+    if (name == "exposed-bom" || name in sampleProjects) return@subprojects
+
+    // ensure sourceSets exists (kotlin("jvm") provides them)
+    afterEvaluate {
+        val ss = the<org.gradle.api.tasks.SourceSetContainer>()
+        tasks.register<Jar>("sourcesJar") {
+            archiveClassifier.set("sources")
+            from(ss.named("main").get().allSource)
+        }
+    }
+
     plugins.withId("com.vanniktech.maven.publish") {
         publishing {
-            publications.withType<MavenPublication>().configureEach {
-                artifact(tasks.named("sourcesJar")) {
-                    classifier = "sources"
-                }
+            publications.withType<org.gradle.api.publish.maven.MavenPublication>().configureEach {
+                artifact(tasks.named("sourcesJar"))
             }
         }
     }
 }
+
 
 apiValidation {
     ignoredProjects.addAll(listOf("exposed-tests", "exposed-bom", "exposed-r2dbc-tests", "exposed-jdbc-r2dbc-tests", "exposed-dao-r2dbc-tests", "exposed-dao-r2dbc") + sampleProjects)
