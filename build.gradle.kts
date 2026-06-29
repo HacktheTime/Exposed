@@ -92,23 +92,27 @@ allprojects {
 subprojects {
     if (name == "exposed-bom" || name in sampleProjects) return@subprojects
 
-    // ensure sourceSets exists (kotlin("jvm") provides them)
-    afterEvaluate {
-        val ss = the<org.gradle.api.tasks.SourceSetContainer>()
+    val sourcesJarTaskProvider = if (tasks.names.contains("sourcesJar")) {
+        tasks.named("sourcesJar", Jar::class.java)
+    } else {
         tasks.register<Jar>("sourcesJar") {
             archiveClassifier.set("sources")
-            from(ss.named("main").get().allSource)
+            from("src/main/java")
+            from("src/main/kotlin")
+            from("src/main/groovy")
         }
     }
 
     plugins.withId("com.vanniktech.maven.publish") {
         publishing {
             publications.withType<org.gradle.api.publish.maven.MavenPublication>().configureEach {
-                artifact(tasks.named("sourcesJar"))
+                artifact(sourcesJarTaskProvider)
             }
         }
     }
 }
+
+
 
 
 apiValidation {
