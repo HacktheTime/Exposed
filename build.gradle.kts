@@ -2,7 +2,6 @@ import com.vanniktech.maven.publish.MavenPublishBaseExtension
 import org.jetbrains.exposed.gradle.configureDetekt
 import org.jetbrains.exposed.gradle.configureMavenCentralMetadata
 import org.jetbrains.exposed.gradle.testDb
-import org.gradle.api.tasks.bundling.Jar
 
 plugins {
     kotlin("jvm") apply true
@@ -89,12 +88,7 @@ allprojects {
         }
     }
 
-    tasks.register<Jar>("sourcesJar") {
-        archiveClassifier.set("sources")
-        this.from(sourceSets.main.get().allSource)
-    }
-
-    plugins.withId("java") { the<JavaPluginExtension>().withSourcesJar() }
+    plugins.withId("java") { the<org.gradle.api.plugins.JavaPluginExtension>().withSourcesJar() }
     plugins.withId("java-library") { the<org.gradle.api.plugins.JavaPluginExtension>().withSourcesJar() }
 }
 
