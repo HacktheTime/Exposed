@@ -71,15 +71,15 @@ dependencies {
 tasks.withType<KotlinCompile>().configureEach {
     compilerOptions {
         if (name == "compileTestKotlin") {
-            jvmTarget.set(JvmTarget.JVM_17)
+            jvmTarget.set(JvmTarget.JVM_21)
         } else {
-            jvmTarget.set(JvmTarget.JVM_11)
+            jvmTarget.set(JvmTarget.JVM_21)
         }
     }
 }
 
 tasks.withType<JavaCompile>().configureEach {
-    targetCompatibility = if (name == "compileTestJava") "17" else "11"
+    targetCompatibility = "21"
 }
 
 tasks.withType<Test>().configureEach {
