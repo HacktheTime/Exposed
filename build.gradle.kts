@@ -88,6 +88,10 @@ allprojects {
             signPublicationIfKeyPresent(this@allprojects, this)
         }
     }
+
+    java {
+        withSourcesJar()
+    }
 }
 
 apiValidation {
