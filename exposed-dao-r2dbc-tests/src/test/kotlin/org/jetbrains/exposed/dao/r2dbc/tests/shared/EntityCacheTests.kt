@@ -60,7 +60,7 @@ class EntityCacheTests : R2dbcDatabaseTestsBase() {
                 repeat(entitiesCount) {
                     TestEntity.new {
                         value = Random.nextInt()
-                    }.flush()
+                    }
                 }
 
                 val allEntities = TestEntity.all().toList()
@@ -89,7 +89,7 @@ class EntityCacheTests : R2dbcDatabaseTestsBase() {
             repeat(entitiesCount) {
                 TestEntity.new {
                     value = Random.nextInt()
-                }.flush()
+                }
             }
 
             val entityIds = TestTable.selectAll().map { it[TestTable.id] }.toList()
@@ -134,7 +134,7 @@ class EntityCacheTests : R2dbcDatabaseTestsBase() {
             repeat(entitiesCount) {
                 TestEntity.new {
                     value = Random.nextInt()
-                }.flush()
+                }
             }
 
             val allEntities = TestEntity.all().toList()
@@ -151,7 +151,7 @@ class EntityCacheTests : R2dbcDatabaseTestsBase() {
             repeat(20) {
                 TestEntity.new {
                     value = Random.nextInt()
-                }.flush()
+                }
             }
             entityCache.clear()
 
@@ -181,7 +181,7 @@ class EntityCacheTests : R2dbcDatabaseTestsBase() {
         withTables(TestTable) {
             val entity = TestEntity.new {
                 value = Random.nextInt()
-            }.flush()
+            }
             assertEquals(entity, TestEntity.testCache(entity.id))
             commit()
             assertEquals(entity, TestEntity.testCache(entity.id))
@@ -213,11 +213,11 @@ class EntityCacheTests : R2dbcDatabaseTestsBase() {
         withTables(TableWithDefaultValue) {
             TableWithDefaultValueEntity.new {
                 value = 1
-            }.flush()
+            }
             TableWithDefaultValueEntity.new {
                 value = 2
                 valueWithDefault = 1
-            }.flush()
+            }
 
             entityCache.clear()
 
@@ -317,7 +317,7 @@ class EntityCacheTests : R2dbcDatabaseTestsBase() {
                 val entity = suspendTransaction {
                     SchemaUtils.create(TestTable)
 
-                    TestEntity.new { value = 1 }.flush()
+                    TestEntity.new { value = 1 }
                 }
 
                 suspendTransaction {

@@ -69,7 +69,7 @@ class ForeignIdEntityTest : R2dbcDatabaseTestsBase() {
         // reproducer for https://github.com/JetBrains/Exposed/issues/880
         withTables(Schema.Projects, Schema.ProjectConfigs, configure = { useNestedTransactions = true }) {
             suspendTransaction {
-                val projectId = Project.new { name = "Space" }.flush().id.value
+                val projectId = Project.new { name = "Space" }.id.value
                 ProjectConfig.new(projectId) { setting = true }
             }
 
@@ -86,9 +86,9 @@ class ForeignIdEntityTest : R2dbcDatabaseTestsBase() {
     @Test
     fun testReferencedEntitiesWithIdenticalColumnNames() {
         withTables(Schema.Actors, Schema.Roles) {
-            val actorA = Actor.new("3746529") { }.flush()
-            val roleA = Role.new { actor.set(actorA) }.flush()
-            val roleB = Role.new { actor.set(actorA) }.flush()
+            val actorA = Actor.new("3746529") { }
+            val roleA = Role.new { actor.set(actorA) }
+            val roleB = Role.new { actor.set(actorA) }
 
             assertContentEquals(listOf(roleA, roleB), actorA.roles.toList())
         }

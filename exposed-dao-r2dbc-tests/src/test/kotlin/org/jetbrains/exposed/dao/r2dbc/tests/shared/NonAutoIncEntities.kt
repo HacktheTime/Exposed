@@ -3,7 +3,6 @@ package org.jetbrains.exposed.dao.r2dbc.tests.shared
 import kotlinx.coroutines.flow.any
 import org.jetbrains.exposed.r2dbc.dao.Entity
 import org.jetbrains.exposed.r2dbc.dao.EntityClass
-import org.jetbrains.exposed.r2dbc.dao.NewEntity
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.dao.id.IdTable
@@ -31,9 +30,9 @@ class NonAutoIncEntities : R2dbcDatabaseTestsBase() {
         companion object : EntityClass<Int, NotAutoEntity>(NotAutoIntIdTable) {
             val lastId = AtomicInteger(0)
             internal const val defaultInt = 42
-            fun new(b: Boolean) = new(lastId.incrementAndGet()) { b1 = b }
+            suspend fun new(b: Boolean) = new(lastId.incrementAndGet()) { b1 = b }
 
-            override fun new(id: Int?, init: NotAutoEntity.() -> Unit): NewEntity<Int, NotAutoEntity> {
+            override suspend fun new(id: Int?, init: suspend NotAutoEntity.() -> Unit): NotAutoEntity {
                 return super.new(id ?: lastId.incrementAndGet()) {
                     defaultedInNew = defaultInt
                     init()
@@ -45,14 +44,14 @@ class NonAutoIncEntities : R2dbcDatabaseTestsBase() {
     @Test
     fun testDefaultsWithOverrideNew() {
         withTables(NotAutoIntIdTable) {
-            val entity1 = NotAutoEntity.new(true).flush()
+            val entity1 = NotAutoEntity.new(true)
             assertEquals(true, entity1.b1)
             assertEquals(NotAutoEntity.defaultInt, entity1.defaultedInNew)
 
             val entity2 = NotAutoEntity.new {
                 b1 = false
                 defaultedInNew = 1
-            }.flush()
+            }
             assertEquals(false, entity2.b1)
             assertEquals(1, entity2.defaultedInNew)
         }
@@ -61,8 +60,8 @@ class NonAutoIncEntities : R2dbcDatabaseTestsBase() {
     @Test
     fun testNotAutoIncTable() {
         withTables(NotAutoIntIdTable) {
-            val e1 = NotAutoEntity.new(true).flush()
-            val e2 = NotAutoEntity.new(false).flush()
+            val e1 = NotAutoEntity.new(true)
+            val e2 = NotAutoEntity.new(false)
 
             val all = NotAutoEntity.all()
             assert(all.any { it.id == e1.id })
@@ -87,7 +86,7 @@ class NonAutoIncEntities : R2dbcDatabaseTestsBase() {
         withTables(CustomPrimaryKeyColumnTable) {
             val request = CustomPrimaryKeyColumnEntity.new {
                 customId = "customIdValue"
-            }.flush()
+            }
 
             assertEquals("customIdValue", request.id.value)
         }
@@ -119,7 +118,7 @@ class NonAutoIncEntities : R2dbcDatabaseTestsBase() {
             val request = Request.new {
                 requestId = "test1"
                 deleted = false
-            }.flush()
+            }
 
             request.delete()
 

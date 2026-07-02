@@ -46,7 +46,7 @@ class EncryptedColumnDaoTests : R2dbcDatabaseTestsBase() {
             val entity = ETest.new {
                 varchar = varcharValue
                 binary = binaryValue
-            }.flush()
+            }
 
             // confirm new entity has been cached
             assertNotNull(entityCache.find(ETest, entity.id))
@@ -76,7 +76,7 @@ class EncryptedColumnDaoTests : R2dbcDatabaseTestsBase() {
             val entity = ETest.new {
                 varchar = varcharValue
                 binary = binaryValue
-            }.flush()
+            }
             assertEquals(varcharValue, entity.varchar)
             assertEquals(binaryValue.contentToString(), entity.binary.contentToString())
 

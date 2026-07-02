@@ -45,7 +45,7 @@ class ColumnWithTransformTest : R2dbcDatabaseTestsBase() {
             val entity = TransformEntity.new {
                 this.simple = TransformDataHolder(120)
                 this.chained = TransformDataHolder(240)
-            }.flush()
+            }
 
             val row = TransformTable.selectAll().first()
             assertEquals(TransformDataHolder(120), row[TransformTable.simple])
@@ -59,7 +59,7 @@ class ColumnWithTransformTest : R2dbcDatabaseTestsBase() {
     @Test
     fun testEntityWithDefaultValue() {
         withTables(TransformTable) {
-            val entity = TransformEntity.new {}.flush()
+            val entity = TransformEntity.new {}
 
             assertEquals(TransformDataHolder(1), entity.simple)
             assertEquals(TransformDataHolder(2), entity.chained)
@@ -76,7 +76,7 @@ class ColumnWithTransformTest : R2dbcDatabaseTestsBase() {
         withTables(TransformTable) {
             TransformEntity.new {
                 simple = TransformDataHolder(10)
-            }.flush()
+            }
             entityCache.clear()
 
             val tableAlias = TransformTable.alias("table_alias")

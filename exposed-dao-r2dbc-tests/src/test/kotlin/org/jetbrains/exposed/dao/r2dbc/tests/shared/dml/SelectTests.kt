@@ -16,15 +16,15 @@ class SelectTests : R2dbcDatabaseTestsBase() {
         withTables(EntityTests.Posts, EntityTests.Boards, EntityTests.Categories) {
             val board1 = EntityTests.Board.new {
                 this.name = "Board1"
-            }.flush()
+            }
 
             val post1 = EntityTests.Post.new {
                 this.board.set(board1)
-            }.flush()
+            }
 
             EntityTests.Post.new {
-                category.set(EntityTests.Category.new { title = "Category1" }.initializedEntity)
-            }.flush()
+                category.set(EntityTests.Category.new { title = "Category1" })
+            }
 
             val result1 = EntityTests.Posts.selectAll().where {
                 EntityTests.Posts.board inList listOf(board1.id)

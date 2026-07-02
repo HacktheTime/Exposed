@@ -12,6 +12,7 @@ import org.jetbrains.exposed.v1.core.CustomFunction
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.dao.id.IdTable
 import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
+import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.vendors.H2Dialect
 import org.jetbrains.exposed.v1.core.vendors.MariaDBDialect
 import org.jetbrains.exposed.v1.core.vendors.MysqlDialect
@@ -28,7 +29,6 @@ import org.jetbrains.exposed.v1.r2dbc.tests.R2dbcDatabaseTestsBase
 import org.jetbrains.exposed.v1.r2dbc.tests.TestDB
 import org.jetbrains.exposed.v1.r2dbc.tests.currentDialectTest
 import org.jetbrains.exposed.v1.r2dbc.tests.shared.assertEqualCollections
-import org.jetbrains.exposed.v1.r2dbc.tests.shared.assertTrue
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Instant
@@ -82,11 +82,11 @@ class JavatimeDefaultsTest : R2dbcDatabaseTestsBase() {
     fun testDefaultsWithExplicit01() {
         withTables(TableWithDBDefault) {
             val created = listOf(
-                DBDefault.new { field = "1" }.flush(),
+                DBDefault.new { field = "1" },
                 DBDefault.new {
                     field = "2"
                     t1 = LocalDateTime.now().minusDays(5)
-                }.flush()
+                }
             )
             commit()
             created.forEach {
@@ -105,8 +105,8 @@ class JavatimeDefaultsTest : R2dbcDatabaseTestsBase() {
                 DBDefault.new {
                     field = "2"
                     t1 = LocalDateTime.now().minusDays(5)
-                }.flush(),
-                DBDefault.new { field = "1" }.flush()
+                },
+                DBDefault.new { field = "1" }
             )
             // R2DBC: INSERT/RETURNING doesn't bring back `defaultExpression` columns (`t1`), and
             // `Column.getValue` is non-suspend so it can't lazy-load like JDBC does. Refresh
@@ -122,8 +122,8 @@ class JavatimeDefaultsTest : R2dbcDatabaseTestsBase() {
     fun testDefaultsInvokedOnlyOncePerEntity() {
         withTables(TableWithDBDefault) {
             TableWithDBDefault.cIndex = 0
-            val db1 = DBDefault.new { field = "1" }.flush()
-            val db2 = DBDefault.new { field = "2" }.flush()
+            val db1 = DBDefault.new { field = "1" }
+            val db2 = DBDefault.new { field = "2" }
             assertEquals(0, db1.clientDefault)
             assertEquals(1, db2.clientDefault)
             assertEquals(2, TableWithDBDefault.cIndex)
@@ -134,8 +134,8 @@ class JavatimeDefaultsTest : R2dbcDatabaseTestsBase() {
     fun testDefaultsCanBeOverridden() {
         withTables(TableWithDBDefault) {
             TableWithDBDefault.cIndex = 0
-            val db1 = DBDefault.new { field = "1" }.initializedEntity
-            val db2 = DBDefault.new { field = "2" }.initializedEntity
+            val db1 = DBDefault.new { field = "1" }
+            val db2 = DBDefault.new { field = "2" }
             db1.clientDefault = 12345
             flushCache()
             assertEquals(12345, db1.clientDefault)
@@ -150,7 +150,7 @@ class JavatimeDefaultsTest : R2dbcDatabaseTestsBase() {
     @Test
     fun testCustomDefaultTimestampFunctionWithEntity() {
         withTables(excludeSettings = TestDB.ALL - TestDB.ALL_POSTGRES - TestDB.MYSQL_V8 - TestDB.ALL_H2_V2, DefaultTimestampTable) {
-            val entity = DefaultTimestampEntity.new {}.flush()
+            val entity = DefaultTimestampEntity.new {}
             // R2DBC: `defaultExpression(dbTimestampNow)` is evaluated by the DB and isn't part of
             // the INSERT's resultedValues, so `entity.timestamp` has no cached value yet. Flush and
             // refresh so the row is loaded back from the DB (JDBC does this implicitly on read).
@@ -184,9 +184,13 @@ class JavatimeDefaultsTest : R2dbcDatabaseTestsBase() {
             val entity = TableWithDefaultValueEntity.new(5) {
                 value = 94
                 valueWithDefault = TableWithDefaultValue.DEFAULT_VALUE
-            }.initializedEntity
-            assertTrue(entity.writeValues.values.contains(TableWithDefaultValue.DEFAULT_VALUE))
-            flushCache()
+            }
+            // R2DBC's `new { }` eagerly flushes, so we verify the persisted row rather than
+            // pre-flush `writeValues` (which is cleared after the insert completes).
+            assertEquals(TableWithDefaultValue.DEFAULT_VALUE, entity.valueWithDefault)
+            val row = TableWithDefaultValue.selectAll()
+                .where { TableWithDefaultValue.id eq entity.id }.first()
+            assertEquals(TableWithDefaultValue.DEFAULT_VALUE, row[TableWithDefaultValue.valueWithDefault])
         }
     }
 }

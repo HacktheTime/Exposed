@@ -51,29 +51,29 @@ fun main() = runBlocking {
 
         val stPete = City.new {
             name = "St. Petersburg"
-        }.flush()
+        }
 
         val munich = City.new {
             name = "Munich"
-        }.flush()
+        }
 
         User.new {
             name = "a"
             city.set(stPete)
             age = 5
-        }.flush()
+        }
 
         User.new {
             name = "b"
             city.set(stPete)
             age = 27
-        }.flush()
+        }
 
         User.new {
             name = "c"
             city.set(munich)
             age = 42
-        }.flush()
+        }
 
         println("Cities: ${City.all().toList().joinToString { it.name }}")
         println("Users in ${stPete.name}: ${stPete.users.toList().joinToString { it.name }}")

@@ -22,7 +22,7 @@ fun Application.brokerRoutes() {
                     val broker = Broker.new {
                         name = dto.name
                         licenseNumber = dto.licenseNumber
-                    }.flush()
+                    }
                     BrokerDTO(broker.id.value, broker.name, broker.licenseNumber)
                 }
                 call.respond(HttpStatusCode.Created, result)

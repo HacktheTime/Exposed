@@ -21,7 +21,7 @@ class JsonColumnTests : R2dbcDatabaseTestsBase() {
             val dataA = DataHolder(User("Admin", "Alpha"), 10, true, null)
             val newUser = dataEntity.new {
                 jsonColumn = dataA
-            }.flush()
+            }
 
             assertEquals(dataA, dataEntity.findById(newUser.id)?.jsonColumn)
 
@@ -33,7 +33,7 @@ class JsonColumnTests : R2dbcDatabaseTestsBase() {
             assertEquals(updatedUser, dataEntity.all().single().jsonColumn)
 
             if (testDb !in TestDB.ALL_H2_V2) {
-                dataEntity.new { jsonColumn = dataA }.flush()
+                dataEntity.new { jsonColumn = dataA }
                 val path = if (currentDialectTest is PostgreSQLDialect) {
                     arrayOf("user", "team")
                 } else {

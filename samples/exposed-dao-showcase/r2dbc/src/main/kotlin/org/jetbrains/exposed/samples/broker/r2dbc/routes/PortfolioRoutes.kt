@@ -25,7 +25,7 @@ fun Application.portfolioRoutes() {
                         name = dto.name
                         this.client.set(client)
                         createdAt = Clock.System.now()
-                    }.flush()
+                    }
                     PortfolioDTO(portfolio.id.value, portfolio.name, portfolio.client().id.value)
                 }
                 call.respond(HttpStatusCode.Created, result)

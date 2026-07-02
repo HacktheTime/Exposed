@@ -58,7 +58,7 @@ class EntityCacheRefreshTests : R2dbcDatabaseTestsBase() {
 
             // Create a single entity with initial value 0
             val entityIdValue = suspendTransaction(db = db) {
-                val entity = TestEntity.new { value = 0 }.flush()
+                val entity = TestEntity.new { value = 0 }
 
                 entity.id.value
             }
@@ -117,7 +117,7 @@ class EntityCacheRefreshTests : R2dbcDatabaseTestsBase() {
             val db2 = dialect.connect()
 
             val entityId = suspendTransaction(db = db1) {
-                TestEntity.new { value = 100 }.flush().id
+                TestEntity.new { value = 100 }.id
             }
 
             suspendTransaction(db = db1, transactionIsolation = IsolationLevel.READ_COMMITTED) {
@@ -163,7 +163,7 @@ class EntityCacheRefreshTests : R2dbcDatabaseTestsBase() {
             val entityId = ExtendedTestEntity.new {
                 value = 100
                 name = "Original"
-            }.flush().id
+            }.id
             commit()
 
             // Load entity fully (all columns cached)

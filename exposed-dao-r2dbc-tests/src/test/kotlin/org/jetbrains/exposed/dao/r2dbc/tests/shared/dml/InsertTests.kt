@@ -39,11 +39,11 @@ class InsertTests : R2dbcDatabaseTestsBase() {
             val foo = OrderedData.new {
                 name = "foo"
                 order = 20
-            }.flush()
+            }
             val bar = OrderedData.new {
                 name = "bar"
                 order = 10
-            }.flush()
+            }
 
             assertEqualLists(listOf(bar, foo), OrderedData.all().orderBy(OrderedDataTable.order to SortOrder.ASC).toList())
         }

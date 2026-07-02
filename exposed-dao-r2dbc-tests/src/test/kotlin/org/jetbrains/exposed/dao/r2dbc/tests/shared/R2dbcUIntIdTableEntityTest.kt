@@ -29,8 +29,8 @@ class UIntIdTableEntityTest : R2dbcDatabaseTestsBase() {
     @Test
     fun `create records`() {
         withTables(UIntIdTables.Cities, UIntIdTables.People) {
-            val mumbai = UIntIdTables.City.new { name = "Mumbai" }.flush()
-            val pune = UIntIdTables.City.new { name = "Pune" }.flush()
+            val mumbai = UIntIdTables.City.new { name = "Mumbai" }
+            val pune = UIntIdTables.City.new { name = "Pune" }
             UIntIdTables.Person.new {
                 name = "David D'souza"
                 city.set(mumbai)
@@ -58,8 +58,8 @@ class UIntIdTableEntityTest : R2dbcDatabaseTestsBase() {
     @Test
     fun `update and delete records`() {
         withTables(UIntIdTables.Cities, UIntIdTables.People) {
-            val mumbai = UIntIdTables.City.new { name = "Mumbai" }.flush()
-            val pune = UIntIdTables.City.new { name = "Pune" }.flush()
+            val mumbai = UIntIdTables.City.new { name = "Mumbai" }
+            val pune = UIntIdTables.City.new { name = "Pune" }
             UIntIdTables.Person.new {
                 name = "David D'souza"
                 city.set(mumbai)
@@ -71,7 +71,7 @@ class UIntIdTableEntityTest : R2dbcDatabaseTestsBase() {
             val tanu = UIntIdTables.Person.new {
                 name = "Tanu Arora"
                 city.set(pune)
-            }.flush()
+            }
 
             tanu.delete()
             pune.delete()

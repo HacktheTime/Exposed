@@ -81,8 +81,8 @@ class JavaUUIDTableEntityTest : R2dbcDatabaseTestsBase() {
     @Test
     fun `create records`() {
         withTables(JavaUUIDTables.Cities, JavaUUIDTables.People) {
-            val mumbai = JavaUUIDTables.City.new { name = "Mumbai" }.flush()
-            val pune = JavaUUIDTables.City.new { name = "Pune" }.flush()
+            val mumbai = JavaUUIDTables.City.new { name = "Mumbai" }
+            val pune = JavaUUIDTables.City.new { name = "Pune" }
             JavaUUIDTables.Person.new(JavaUUID.randomUUID()) {
                 name = "David D'souza"
                 city.set(mumbai)
@@ -110,8 +110,8 @@ class JavaUUIDTableEntityTest : R2dbcDatabaseTestsBase() {
     @Test
     fun `update and delete records`() {
         withTables(JavaUUIDTables.Cities, JavaUUIDTables.People) {
-            val mumbai = JavaUUIDTables.City.new(JavaUUID.randomUUID()) { name = "Mumbai" }.flush()
-            val pune = JavaUUIDTables.City.new(JavaUUID.randomUUID()) { name = "Pune" }.flush()
+            val mumbai = JavaUUIDTables.City.new(JavaUUID.randomUUID()) { name = "Mumbai" }
+            val pune = JavaUUIDTables.City.new(JavaUUID.randomUUID()) { name = "Pune" }
             JavaUUIDTables.Person.new(JavaUUID.randomUUID()) {
                 name = "David D'souza"
                 city.set(mumbai)
@@ -123,7 +123,7 @@ class JavaUUIDTableEntityTest : R2dbcDatabaseTestsBase() {
             val tanu = JavaUUIDTables.Person.new(JavaUUID.randomUUID()) {
                 name = "Tanu Arora"
                 city.set(pune)
-            }.flush()
+            }
 
             tanu.delete()
             pune.delete()
@@ -143,23 +143,23 @@ class JavaUUIDTableEntityTest : R2dbcDatabaseTestsBase() {
         withTables(JavaUUIDTables.Addresses, JavaUUIDTables.Cities, JavaUUIDTables.People) {
             val city1 = JavaUUIDTables.City.new {
                 name = "city1"
-            }.flush()
+            }
             val person1 = JavaUUIDTables.Person.new {
                 name = "person1"
                 city.set(city1)
-            }.flush()
+            }
 
             val address1 = JavaUUIDTables.Address.new {
                 person.set(person1)
                 city.set(city1)
                 address = "address1"
-            }.flush()
+            }
 
             val address2 = JavaUUIDTables.Address.new {
                 person.set(person1)
                 city.set(city1)
                 address = "address2"
-            }.flush()
+            }
 
             address1.refresh(flush = true)
             assertEquals("address1", address1.address)
