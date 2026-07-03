@@ -12,6 +12,7 @@ import org.jetbrains.exposed.v1.dao.EntityClass
 import org.jetbrains.exposed.v1.dao.IntEntity
 import org.jetbrains.exposed.v1.dao.IntEntityClass
 import org.jetbrains.exposed.v1.dao.flushCache
+import org.jetbrains.exposed.v1.exceptions.ExposedSQLException
 import org.jetbrains.exposed.v1.jdbc.*
 import org.jetbrains.exposed.v1.tests.DatabaseTestsBase
 import org.jetbrains.exposed.v1.tests.TestDB
@@ -277,10 +278,10 @@ class DefaultsTest : DatabaseTestsBase() {
                 "${"t12".inProperCase()} $timestampType${testTable.t12.constraintNamePart()} ${tsLiteral.itOrNull()}" +
                 when (testDb) {
                     TestDB.SQLITE ->
-                        ", CONSTRAINT chk_t_signed_integer_id CHECK (${"id".inProperCase()} BETWEEN ${Int.MIN_VALUE} AND ${Int.MAX_VALUE})"
+                        ", CONSTRAINT ${"chk_t_signed_integer_id".inProperCase()} CHECK (${"id".inProperCase()} BETWEEN ${Int.MIN_VALUE} AND ${Int.MAX_VALUE})"
                     TestDB.ORACLE ->
-                        ", CONSTRAINT chk_t_signed_integer_id CHECK (${"id".inProperCase()} BETWEEN ${Int.MIN_VALUE} AND ${Int.MAX_VALUE})" +
-                            ", CONSTRAINT chk_t_signed_long_l CHECK (L BETWEEN ${Long.MIN_VALUE} AND ${Long.MAX_VALUE})"
+                        ", CONSTRAINT ${"chk_t_signed_integer_id".inProperCase()} CHECK (${"id".inProperCase()} BETWEEN ${Int.MIN_VALUE} AND ${Int.MAX_VALUE})" +
+                            ", CONSTRAINT ${"chk_t_signed_long_l".inProperCase()} CHECK (L BETWEEN ${Long.MIN_VALUE} AND ${Long.MAX_VALUE})"
                     else -> ""
                 } +
                 ")"
@@ -445,7 +446,7 @@ class DefaultsTest : DatabaseTestsBase() {
                 "${"t3".inProperCase()} $timestampWithTimeZoneType${testTable.t3.constraintNamePart()} ${CurrentTimestampWithTimeZone.itOrNull()}" +
                 when (testDb) {
                     TestDB.SQLITE, TestDB.ORACLE ->
-                        ", CONSTRAINT chk_t_signed_integer_id CHECK (${"id".inProperCase()} BETWEEN ${Int.MIN_VALUE} AND ${Int.MAX_VALUE})"
+                        ", CONSTRAINT ${"chk_t_signed_integer_id".inProperCase()} CHECK (${"id".inProperCase()} BETWEEN ${Int.MIN_VALUE} AND ${Int.MAX_VALUE})"
                     else -> ""
                 } +
                 ")"
@@ -664,6 +665,39 @@ class DefaultsTest : DatabaseTestsBase() {
             val timestamp = DefaultTimestampTable.selectAll().first()[DefaultTimestampTable.timestamp]
 
             assertEquals(timestamp, entity[DefaultTimestampTable.timestamp])
+        }
+    }
+
+    @Test
+    fun testTimestampWithDistantFutureDefault() {
+        val tester = object : Table("tester") {
+            // Kotlin DISTANT_FUTURE == +100000-01-01T00:00:00Z
+            val status_end = timestamp("status_end").default(Instant.DISTANT_FUTURE)
+            val activity_end = timestamp("activity_end").clientDefault { Instant.DISTANT_FUTURE }
+        }
+
+        withDb { testDb ->
+            // Stored range for these DB (& SQL Server) has maximum year 9999
+            if (testDb == TestDB.ORACLE || testDb in TestDB.ALL_MYSQL_MARIADB) {
+                // Out-of-range TS value not even acceptable as just default value
+                expectException<ExposedSQLException> { SchemaUtils.create(tester) }
+            } else {
+                SchemaUtils.create(tester)
+
+                if (testDb == TestDB.SQLSERVER) {
+                    // TS value is only checked whether out-of-range on insert
+                    expectException<ExposedSQLException> { tester.insert { } }
+                } else {
+                    tester.insert { }
+
+                    val results = tester.selectAll().singleOrNull()
+                    assertNotNull(results)
+                    assertEquals(Instant.DISTANT_FUTURE, results[tester.status_end])
+                    assertEquals(Instant.DISTANT_FUTURE, results[tester.activity_end])
+                }
+
+                SchemaUtils.drop(tester)
+            }
         }
     }
 }

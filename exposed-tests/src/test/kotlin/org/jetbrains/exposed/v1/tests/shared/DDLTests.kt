@@ -114,6 +114,7 @@ class DDLTests : DatabaseTestsBase() {
         )
     }
 
+    @OptIn(InternalApi::class)
     @Test
     fun testKeywordIdentifiersWithoutOptOut() {
         val keywords = listOf("data", "public", "key", "constraint")
@@ -142,7 +143,7 @@ class DDLTests : DatabaseTestsBase() {
                 "$constraintName ${keywordTable.constraint.columnType.sqlType()} NOT NULL" +
                 when (testDb) {
                     TestDB.SQLITE, TestDB.ORACLE ->
-                        """, CONSTRAINT chk_data_signed_integer_key CHECK ("key" BETWEEN ${Int.MIN_VALUE} AND ${Int.MAX_VALUE})"""
+                        """, CONSTRAINT ${"chk_data_signed_integer_key".inProperCase()} CHECK ("key" BETWEEN ${Int.MIN_VALUE} AND ${Int.MAX_VALUE})"""
                     else -> ""
                 } +
                 ")"
@@ -178,6 +179,7 @@ class DDLTests : DatabaseTestsBase() {
 
     @OptIn(InternalApi::class)
     @Test
+    @Suppress("MaximumLineLength")
     fun unnamedTableWithQuotesSQL() {
         withTables(excludeSettings = listOf(TestDB.SQLITE), tables = arrayOf(unnamedTable)) { testDb ->
             val q = db.identifierManager.quoteString
@@ -194,7 +196,7 @@ class DDLTests : DatabaseTestsBase() {
                 "CREATE TABLE " + addIfNotExistsIfSupported() + "$tableName " +
                     "(${"id".inProperCase()} $integerType PRIMARY KEY, $q${"name".inProperCase()}$q $varCharType NOT NULL" +
                     when (testDb) {
-                        TestDB.ORACLE -> ", CONSTRAINT chk_unnamedTable$1_signed_integer_id CHECK (ID BETWEEN ${Int.MIN_VALUE} AND ${Int.MAX_VALUE})"
+                        TestDB.ORACLE -> ", CONSTRAINT ${"chk_unnamedTable$1_signed_integer_id".inProperCase()} CHECK (ID BETWEEN ${Int.MIN_VALUE} AND ${Int.MAX_VALUE})"
                         else -> ""
                     } +
                     ")",
@@ -259,6 +261,7 @@ class DDLTests : DatabaseTestsBase() {
 
     @OptIn(InternalApi::class)
     @Test
+    @Suppress("MaximumLineLength")
     fun tableWithDifferentColumnTypesSQL02() {
         val testTable = object : Table("with_different_column_types") {
             val id = integer("id")
@@ -278,8 +281,8 @@ class DDLTests : DatabaseTestsBase() {
             val primaryKeyConstraint = "CONSTRAINT pk_with_different_column_types PRIMARY KEY (${"id".inProperCase()}, $q${"name".inProperCase()}$q)"
             val checkConstraint = when (testDb) {
                 TestDB.ORACLE ->
-                    ", CONSTRAINT chk_with_different_column_types_signed_integer_id CHECK (ID BETWEEN ${Int.MIN_VALUE} AND ${Int.MAX_VALUE})" +
-                        ", CONSTRAINT chk_with_different_column_types_signed_integer_age CHECK (AGE BETWEEN ${Int.MIN_VALUE} AND ${Int.MAX_VALUE})"
+                    ", CONSTRAINT ${"chk_with_different_column_types_signed_integer_id".inProperCase()} CHECK (ID BETWEEN ${Int.MIN_VALUE} AND ${Int.MAX_VALUE})" +
+                        ", CONSTRAINT ${"chk_with_different_column_types_signed_integer_age".inProperCase()} CHECK (AGE BETWEEN ${Int.MIN_VALUE} AND ${Int.MAX_VALUE})"
                 else -> ""
             }
 
@@ -289,6 +292,7 @@ class DDLTests : DatabaseTestsBase() {
 
     @OptIn(InternalApi::class)
     @Test
+    @Suppress("MaximumLineLength")
     fun tableWithDifferentColumnTypesInSQLite() {
         val testTable = object : Table("with_different_column_types") {
             val id = integer("id")
@@ -309,8 +313,8 @@ class DDLTests : DatabaseTestsBase() {
 
             assertEquals(
                 "$tableDescription ($idDescription, $nameDescription, $ageDescription, $constraint," +
-                    " CONSTRAINT chk_with_different_column_types_signed_integer_id CHECK (${"id".inProperCase()} BETWEEN ${Int.MIN_VALUE} AND ${Int.MAX_VALUE})," +
-                    " CONSTRAINT chk_with_different_column_types_signed_integer_age CHECK (${"age".inProperCase()} BETWEEN ${Int.MIN_VALUE} AND ${Int.MAX_VALUE}))",
+                    " CONSTRAINT ${"chk_with_different_column_types_signed_integer_id".inProperCase()} CHECK (${"id".inProperCase()} BETWEEN ${Int.MIN_VALUE} AND ${Int.MAX_VALUE})," +
+                    " CONSTRAINT ${"chk_with_different_column_types_signed_integer_age".inProperCase()} CHECK (${"age".inProperCase()} BETWEEN ${Int.MIN_VALUE} AND ${Int.MAX_VALUE}))",
                 testTable.ddl
             )
         }
