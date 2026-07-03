@@ -8,7 +8,6 @@ plugins {
     id(libs.plugins.detekt.get().pluginId) apply true
     alias(libs.plugins.binary.compatibility.validator)
     id(libs.plugins.docker.compose.get().pluginId)
-
     alias(libs.plugins.dokka)
     alias(libs.plugins.maven.publish)
     alias(libs.plugins.kover)
@@ -74,7 +73,7 @@ repositories {
 }
 
 val sampleProjects = setOf("exposed-dao-showcase-jdbc", "exposed-dao-showcase-r2dbc")
-val unpublishedProjects = setOf("exposed-tests", "exposed-r2dbc-tests", "exposed-jdbc-r2dbc-tests", "exposed-dao-r2dbc-tests", "exposed-dao-r2dbc") + sampleProjects
+val unpublishedProjects = sampleProjects
 
 allprojects {
     if (this.name !in unpublishedProjects && this != rootProject) {
@@ -84,12 +83,23 @@ allprojects {
             pom {
                 configureMavenCentralMetadata(this@allprojects)
             }
-
             publishToMavenCentral(automaticRelease = true)
             signPublicationIfKeyPresent(this@allprojects, this)
         }
     }
 }
+
+subprojects {
+    if (name == "exposed-bom" || name in sampleProjects) return@subprojects
+
+    plugins.withId("com.vanniktech.maven.publish") {
+        // do nothing here for sourcesJar
+    }
+}
+
+
+
+
 
 apiValidation {
     ignoredProjects.addAll(listOf("exposed-tests", "exposed-bom", "exposed-r2dbc-tests", "exposed-jdbc-r2dbc-tests", "exposed-dao-r2dbc-tests", "exposed-dao-r2dbc") + sampleProjects)

@@ -20,7 +20,7 @@ repositories {
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
 
     compilerOptions {
         optIn.add("kotlin.time.ExperimentalTime")
@@ -85,12 +85,12 @@ signing {
 
 tasks.withType<KotlinCompile>().configureEach {
     compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_11)
+        jvmTarget.set(JvmTarget.JVM_21)
     }
 }
 
 tasks.withType<JavaCompile>().configureEach {
-    targetCompatibility = "11"
+    targetCompatibility = "21"
 }
 
 tasks.withType<Test>().configureEach {
