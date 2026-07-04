@@ -92,9 +92,6 @@ allprojects {
 subprojects {
     if (name == "exposed-bom" || name in sampleProjects) return@subprojects
 
-    plugins.withId("com.vanniktech.maven.publish") {
-        // do nothing here for sourcesJar
-    }
 }
 
 
@@ -119,6 +116,7 @@ subprojects {
 
     apply(plugin = rootProject.libs.plugins.jvm.get().pluginId)
     apply(plugin = rootProject.libs.plugins.kover.get().pluginId)
+
 
     testDb("h2_v2") {
         withContainer = false
