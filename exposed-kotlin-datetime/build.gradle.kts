@@ -8,7 +8,6 @@ plugins {
     kotlin("jvm")
     alias(libs.plugins.serialization)
 
-    alias(libs.plugins.dokka)
 }
 
 repositories {
