@@ -189,20 +189,23 @@ abstract class R2dbcEntityClass<ID : Any, out T : R2dbcEntity<ID>>(
      */
     @Suppress("MemberVisibilityCanBePrivate")
     fun wrapRow(row: ResultRow): T {
-        val entity = wrap(row[table.id], row)
-
-        if (entity._readValues == null) {
-            entity._readValues = row
-            return entity
+        val id = row[table.id]
+        val transaction = TransactionManager.current()
+        val cache = transaction.entityCache
+        val cached = cache.find(this, id)
+        if (cached != null) {
+            // Merge values from the new row into the cached entity
+            val existingKeys = cached.readValues.fieldIndex.keys
+            val fetchedKeys = row.fieldIndex.keys
+            val columnToValue = (existingKeys + fetchedKeys).toSet().associateWith { column ->
+                if (row.hasValue(column)) row[column] else cached._readValues?.get(column)
+            }
+            cached._readValues = ResultRow.createAndFillValues(unwrapColumnValues(columnToValue))
+            return cached
         }
-
-        val existingKeys = entity.readValues.fieldIndex.keys
-        val fetchedKeys = row.fieldIndex.keys
-        val columnToValue = (existingKeys + fetchedKeys).toSet().associateWith { column ->
-            if (row.hasValue(column)) row[column] else entity._readValues?.get(column)
-        }
-        entity._readValues = ResultRow.createAndFillValues(unwrapColumnValues(columnToValue))
-
+        // Not cached yet – create a new entity and store it
+        val entity = wrap(id, row)
+        cache.store(entity)
         return entity
     }
 
@@ -218,34 +221,28 @@ abstract class R2dbcEntityClass<ID : Any, out T : R2dbcEntity<ID>>(
                 else -> exp to value
             }
         }.toMap()
-
-        return wrapRow(ResultRow.createAndFillValues(unwrapColumnValues(newFieldsMapping)))
-    }
-
-    fun wrapRow(row: ResultRow, alias: QueryAlias): T {
-        require(alias.columns.any { (it.table as Alias<*>).delegate == table }) { "QueryAlias doesn't have any column from ${table.tableName} table" }
-        val originalColumns = alias.query.set.source.columns
-        val newFieldsMapping = row.fieldIndex.mapNotNull { (exp, _) ->
-            val value = row[exp]
-            when (exp) {
-                is Column if exp.table is Alias<*> -> {
-                    val delegate = (exp.table as Alias<*>).delegate
-                    val column = originalColumns.single {
-                        delegate == it.table && exp.name == it.name
-                    }
-                    column to value
-                }
-                is Column if exp.table == table -> null
-                else -> exp to value
-            }
-        }.toMap()
-
-        return wrapRow(ResultRow.createAndFillValues(unwrapColumnValues(newFieldsMapping)))
+        val entity = wrapRow(ResultRow.createAndFillValues(unwrapColumnValues(newFieldsMapping)))
+        return entity
     }
 
     fun wrap(id: EntityID<ID>, row: ResultRow?): T {
         val transaction = TransactionManager.current()
-        return transaction.entityCache.find(this, id) ?: createInstance(id, row).also { new ->
+        val cached = transaction.entityCache.find(this, id)
+        if (cached != null) {
+            if (row != null) {
+                // Merge new column values into cached entity's readValues
+                val existingKeys = cached.readValues.fieldIndex.keys
+                val fetchedKeys = row.fieldIndex.keys
+                val columnToValue = (existingKeys + fetchedKeys).toSet().associateWith { column ->
+                    if (row.hasValue(column)) row[column] else cached._readValues?.get(column)
+                }
+                cached._readValues = ResultRow.createAndFillValues(unwrapColumnValues(columnToValue))
+                // Update cache with merged entity
+                warmCache().store(cached)
+            }
+            return cached
+        }
+        return createInstance(id, row).also { new ->
             new.klass = this
             new.db = transaction.db
             warmCache().store(new)
@@ -279,16 +276,16 @@ abstract class R2dbcEntityClass<ID : Any, out T : R2dbcEntity<ID>>(
      */
     infix fun <TargetID : Any, Target : R2dbcEntity<TargetID>, REF : Any>
         R2dbcEntityClass<TargetID, Target>.optionalReferrersOnSuspend(
-        column: Column<REF?>
-    ): R2dbcReferrers<ID, R2dbcEntity<ID>, TargetID, Target, REF?> =
+            column: Column<REF?>
+        ): R2dbcReferrers<ID, R2dbcEntity<ID>, TargetID, Target, REF?> =
         R2dbcReferrers(column, this, cache = true)
 
     /** Two-argument form to control caching behaviour. */
     fun <TargetID : Any, Target : R2dbcEntity<TargetID>, REF : Any>
         R2dbcEntityClass<TargetID, Target>.optionalReferrersOnSuspend(
-        column: Column<REF?>,
-        cache: Boolean
-    ): R2dbcReferrers<ID, R2dbcEntity<ID>, TargetID, Target, REF?> =
+            column: Column<REF?>,
+            cache: Boolean
+        ): R2dbcReferrers<ID, R2dbcEntity<ID>, TargetID, Target, REF?> =
         R2dbcReferrers(column, this, cache)
 
     /**
@@ -296,8 +293,8 @@ abstract class R2dbcEntityClass<ID : Any, out T : R2dbcEntity<ID>>(
      */
     infix fun <TargetID : Any, Target : R2dbcEntity<TargetID>, REF>
         R2dbcEntityClass<TargetID, Target>.backReferencedOnSuspend(
-        column: Column<REF>
-    ): R2dbcBackReference<TargetID, Target, ID, R2dbcEntity<ID>, REF> =
+            column: Column<REF>
+        ): R2dbcBackReference<TargetID, Target, ID, R2dbcEntity<ID>, REF> =
         R2dbcBackReference(column, this)
 
     /**
@@ -305,8 +302,8 @@ abstract class R2dbcEntityClass<ID : Any, out T : R2dbcEntity<ID>>(
      */
     infix fun <TargetID : Any, Target : R2dbcEntity<TargetID>, REF>
         R2dbcEntityClass<TargetID, Target>.optionalBackReferencedOnSuspend(
-        column: Column<REF?>
-    ): R2dbcOptionalBackReference<TargetID, Target, ID, R2dbcEntity<ID>, REF> =
+            column: Column<REF?>
+        ): R2dbcOptionalBackReference<TargetID, Target, ID, R2dbcEntity<ID>, REF> =
         R2dbcOptionalBackReference(column, this)
 
     /**
@@ -317,8 +314,8 @@ abstract class R2dbcEntityClass<ID : Any, out T : R2dbcEntity<ID>>(
     @JvmName("optionalBackReferencedOnSuspendNonNullable")
     infix fun <TargetID : Any, Target : R2dbcEntity<TargetID>, REF : Any>
         R2dbcEntityClass<TargetID, Target>.optionalBackReferencedOnSuspend(
-        column: Column<REF>
-    ): R2dbcOptionalBackReference<TargetID, Target, ID, R2dbcEntity<ID>, REF> =
+            column: Column<REF>
+        ): R2dbcOptionalBackReference<TargetID, Target, ID, R2dbcEntity<ID>, REF> =
         R2dbcOptionalBackReference(column as Column<REF?>, this)
 
     @Suppress("UNCHECKED_CAST")
@@ -330,18 +327,17 @@ abstract class R2dbcEntityClass<ID : Any, out T : R2dbcEntity<ID>>(
     /** Two-argument form to control caching behaviour. */
     fun <TargetID : Any, Target : R2dbcEntity<TargetID>, REF>
         R2dbcEntityClass<TargetID, Target>.referrersOnSuspend(
-        column: Column<REF>,
-        cache: Boolean
-    ): R2dbcReferrers<ID, R2dbcEntity<ID>, TargetID, Target, REF> =
+            column: Column<REF>,
+            cache: Boolean
+        ): R2dbcReferrers<ID, R2dbcEntity<ID>, TargetID, Target, REF> =
         R2dbcReferrers(column, this, cache)
-
 
     /** Composite-FK form of [referrersOnSuspend]. R2DBC counterpart of JDBC's `referrersOn(IdTable<*>)`. */
     @Suppress("UNCHECKED_CAST")
     infix fun <TargetID : Any, Target : R2dbcEntity<TargetID>>
         R2dbcEntityClass<TargetID, Target>.referrersOnSuspend(
-        table: IdTable<*>
-    ): R2dbcReferrers<ID, R2dbcEntity<ID>, TargetID, Target, Any> {
+            table: IdTable<*>
+        ): R2dbcReferrers<ID, R2dbcEntity<ID>, TargetID, Target, Any> {
         val tableFK = this@R2dbcEntityClass.getCompositeForeignKey(table)
         val delegate = tableFK.from.first() as Column<Any>
         return R2dbcReferrers(delegate, this, cache = true, references = tableFK.references)
@@ -351,8 +347,8 @@ abstract class R2dbcEntityClass<ID : Any, out T : R2dbcEntity<ID>>(
     @Suppress("UNCHECKED_CAST")
     infix fun <TargetID : Any, Target : R2dbcEntity<TargetID>>
         R2dbcEntityClass<TargetID, Target>.optionalReferrersOnSuspend(
-        table: IdTable<*>
-    ): R2dbcReferrers<ID, R2dbcEntity<ID>, TargetID, Target, Any?> {
+            table: IdTable<*>
+        ): R2dbcReferrers<ID, R2dbcEntity<ID>, TargetID, Target, Any?> {
         val tableFK = this@R2dbcEntityClass.getCompositeForeignKey(table)
         val delegate = tableFK.from.first() as Column<Any?>
         return R2dbcReferrers(delegate, this, cache = true, references = tableFK.references)
@@ -362,8 +358,8 @@ abstract class R2dbcEntityClass<ID : Any, out T : R2dbcEntity<ID>>(
     @Suppress("UNCHECKED_CAST")
     infix fun <TargetID : Any, Target : R2dbcEntity<TargetID>>
         R2dbcEntityClass<TargetID, Target>.backReferencedOnSuspend(
-        table: IdTable<*>
-    ): R2dbcBackReference<TargetID, Target, ID, R2dbcEntity<ID>, Any> {
+            table: IdTable<*>
+        ): R2dbcBackReference<TargetID, Target, ID, R2dbcEntity<ID>, Any> {
         val tableFK = this@R2dbcEntityClass.getCompositeForeignKey(table)
         val delegate = tableFK.from.first() as Column<Any>
         return R2dbcBackReference(delegate, this, references = tableFK.references)
@@ -373,8 +369,8 @@ abstract class R2dbcEntityClass<ID : Any, out T : R2dbcEntity<ID>>(
     @Suppress("UNCHECKED_CAST")
     infix fun <TargetID : Any, Target : R2dbcEntity<TargetID>>
         R2dbcEntityClass<TargetID, Target>.optionalBackReferencedOnSuspend(
-        table: IdTable<*>
-    ): R2dbcOptionalBackReference<TargetID, Target, ID, R2dbcEntity<ID>, Any> {
+            table: IdTable<*>
+        ): R2dbcOptionalBackReference<TargetID, Target, ID, R2dbcEntity<ID>, Any> {
         val tableFK = this@R2dbcEntityClass.getCompositeForeignKey(table)
         val delegate = tableFK.from.first() as Column<Any?>
         return R2dbcOptionalBackReference(delegate, this, references = tableFK.references)
