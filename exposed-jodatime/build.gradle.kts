@@ -5,8 +5,6 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     kotlin("jvm")
     alias(libs.plugins.serialization)
-
-    alias(libs.plugins.dokka)
 }
 
 repositories {

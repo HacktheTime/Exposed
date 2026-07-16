@@ -9,38 +9,11 @@ plugins {
     alias(libs.plugins.binary.compatibility.validator)
     id(libs.plugins.docker.compose.get().pluginId)
 
-    alias(libs.plugins.dokka)
     alias(libs.plugins.maven.publish)
     alias(libs.plugins.kover)
 }
 
-dokka {
-    dokkaPublications.html {
-        outputDirectory.set(project.file("docs/api"))
-    }
-}
-
 dependencies {
-    dokka(projects.exposed.exposedCore)
-    dokka(projects.exposed.exposedCrypt)
-    dokka(projects.exposed.exposedDao)
-    dokka(projects.exposed.exposedGradlePlugin)
-    dokka(projects.exposed.exposedJavaTime)
-    dokka(projects.exposed.exposedJdbc)
-    dokka(projects.exposed.exposedJodatime)
-    dokka(projects.exposed.exposedJson)
-    dokka(projects.exposed.exposedKotlinDatetime)
-    dokka(projects.exposed.exposedMigrationCore)
-    dokka(projects.exposed.exposedMigrationJdbc)
-    dokka(projects.exposed.exposedMigrationR2dbc)
-    dokka(projects.exposed.exposedMoney)
-    dokka(projects.exposed.exposedR2dbc)
-    dokka(projects.exposed.exposedSpringBootStarter)
-    dokka(projects.exposed.exposedSpringBoot4Starter)
-    dokka(projects.exposed.springTransaction)
-    dokka(projects.exposed.spring7Transaction)
-    dokka(projects.exposed.exposedDaoR2dbc)
-
     // Kover aggregated coverage dependencies
     // Include all source modules for coverage aggregation
     kover(project(":exposed-core"))
