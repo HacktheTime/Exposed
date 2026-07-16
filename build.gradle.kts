@@ -47,7 +47,7 @@ repositories {
 }
 
 val sampleProjects = setOf("exposed-dao-showcase-jdbc", "exposed-dao-showcase-r2dbc")
-val unpublishedProjects = setOf("exposed-tests", "exposed-r2dbc-tests", "exposed-jdbc-r2dbc-tests", "exposed-dao-r2dbc-tests", "exposed-dao-r2dbc") + sampleProjects
+val unpublishedProjects = setOf("exposed-tests", "exposed-r2dbc-tests", "exposed-jdbc-r2dbc-tests", "exposed-dao-r2dbc-tests") + sampleProjects
 
 allprojects {
     if (this.name !in unpublishedProjects && this != rootProject) {
