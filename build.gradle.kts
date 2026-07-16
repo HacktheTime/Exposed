@@ -98,7 +98,7 @@ subprojects {
 
 
 apiValidation {
-    ignoredProjects.addAll(listOf("exposed-tests", "exposed-bom", "exposed-r2dbc-tests", "exposed-jdbc-r2dbc-tests", "exposed-dao-r2dbc-tests", "exposed-dao-r2dbc") + sampleProjects)
+    ignoredProjects.addAll(listOf("exposed-tests", "exposed-bom", "exposed-r2dbc-tests", "exposed-jdbc-r2dbc-tests", "exposed-dao-r2dbc-tests") + sampleProjects)
 }
 
 subprojects {

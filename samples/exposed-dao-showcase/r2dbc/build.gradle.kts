@@ -32,5 +32,6 @@ kotlin {
     jvmToolchain(21)
     compilerOptions {
         optIn.add("kotlin.time.ExperimentalTime")
+        optIn.add("org.jetbrains.exposed.r2dbc.dao.ExperimentalR2dbcDaoApi")
     }
 }
