@@ -26,7 +26,7 @@ fun Application.clientRoutes() {
                         name = dto.name
                         email = dto.email
                         this.broker.set(broker)
-                    }.flush()
+                    }
                     ClientDTO(client.id.value, client.name, client.email, client.broker().id.value)
                 }
                 call.respond(HttpStatusCode.Created, result)

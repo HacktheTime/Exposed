@@ -78,17 +78,17 @@ class MultiDatabaseEntityTest : R2dbcDatabaseTestsBase() {
         suspendTransaction(db1) {
             EntityTestsData.XEntity.new {
                 this.b1 = true
-            }.flush()
+            }
         }
 
         suspendTransaction(db2) {
             EntityTestsData.XEntity.new {
                 this.b1 = false
-            }.flush()
+            }
 
             EntityTestsData.XEntity.new {
                 this.b1 = false
-            }.flush()
+            }
         }
 
         suspendTransaction(db1) {
@@ -107,7 +107,7 @@ class MultiDatabaseEntityTest : R2dbcDatabaseTestsBase() {
         suspendTransaction(db1) {
             EntityTestsData.XEntity.new {
                 this.b1 = true
-            }.flush()
+            }
 
             assertEquals(1L, EntityTestsData.XEntity.all().count())
             assertEquals(true, EntityTestsData.XEntity.all().single().b1)
@@ -116,11 +116,11 @@ class MultiDatabaseEntityTest : R2dbcDatabaseTestsBase() {
                 assertEquals(0L, EntityTestsData.XEntity.all().count())
                 EntityTestsData.XEntity.new {
                     this.b1 = false
-                }.flush()
+                }
 
                 EntityTestsData.XEntity.new {
                     this.b1 = false
-                }.flush()
+                }
                 assertEquals(2L, EntityTestsData.XEntity.all().count())
                 assertEquals(true, EntityTestsData.XEntity.all().all { !it.b1 })
             }
@@ -135,7 +135,7 @@ class MultiDatabaseEntityTest : R2dbcDatabaseTestsBase() {
         suspendTransaction(db1) {
             EntityTestsData.XEntity.new {
                 this.b1 = true
-            }.flush()
+            }
 
             assertEquals(1L, EntityTestsData.XEntity.all().count())
             assertEquals(true, EntityTestsData.XEntity.all().single().b1)
@@ -144,22 +144,22 @@ class MultiDatabaseEntityTest : R2dbcDatabaseTestsBase() {
                 assertEquals(0L, EntityTestsData.XEntity.all().count())
                 EntityTestsData.XEntity.new {
                     this.b1 = false
-                }.flush()
+                }
 
                 EntityTestsData.XEntity.new {
                     this.b1 = false
-                }.flush()
+                }
                 assertEquals(2L, EntityTestsData.XEntity.all().count())
                 assertEquals(true, EntityTestsData.XEntity.all().all { !it.b1 })
 
                 suspendTransaction(db1) {
                     EntityTestsData.XEntity.new {
                         this.b1 = true
-                    }.flush()
+                    }
 
                     EntityTestsData.XEntity.new {
                         this.b1 = false
-                    }.flush()
+                    }
                     assertEquals(3L, EntityTestsData.XEntity.all().count())
                 }
                 assertEquals(2L, EntityTestsData.XEntity.all().count())
@@ -177,18 +177,18 @@ class MultiDatabaseEntityTest : R2dbcDatabaseTestsBase() {
         var db1y1 by Delegates.notNull<EntityTestsData.YEntity>()
         var db2y1 by Delegates.notNull<EntityTestsData.YEntity>()
         suspendTransaction(db1) {
-            db1b1 = EntityTestsData.BEntity.new(1) { }.flush()
+            db1b1 = EntityTestsData.BEntity.new(1) { }
 
             suspendTransaction(db2) {
                 assertEquals(0L, EntityTestsData.BEntity.count())
-                db2b1 = EntityTestsData.BEntity.new(2) { }.flush()
-                db2y1 = EntityTestsData.YEntity.new("2") { }.flush()
+                db2b1 = EntityTestsData.BEntity.new(2) { }
+                db2y1 = EntityTestsData.YEntity.new("2") { }
                 db2b1.y.set(db2y1)
             }
             assertEquals(1L, EntityTestsData.BEntity.count())
             assertNotNull(EntityTestsData.BEntity[1])
 
-            db1y1 = EntityTestsData.YEntity.new("1") { }.flush()
+            db1y1 = EntityTestsData.YEntity.new("1") { }
             db1b1.y.set(db1y1)
 
             commit()
@@ -216,11 +216,11 @@ class MultiDatabaseEntityTest : R2dbcDatabaseTestsBase() {
         Assertions.assertThrows(IllegalStateException::class.java) {
             runBlocking {
                 suspendTransaction(db1) {
-                    val db1b1 = EntityTestsData.BEntity.new(1) { }.flush()
+                    val db1b1 = EntityTestsData.BEntity.new(1) { }
 
                     suspendTransaction(db2) {
                         assertEquals(0L, EntityTestsData.BEntity.count())
-                        db1b1.y.set(EntityTestsData.YEntity.new("2") { }.flush())
+                        db1b1.y.set(EntityTestsData.YEntity.new("2") { })
                     }
                 }
             }

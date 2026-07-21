@@ -110,8 +110,8 @@ class ViaTest : R2dbcDatabaseTestsBase() {
     @Test
     fun testConnection01() {
         withTables(*ViaTestData.allTables) {
-            val n = VNumber.new { number = 10 }.flush()
-            val s = VString.new { text = "aaa" }.flush()
+            val n = VNumber.new { number = 10 }
+            val s = VString.new { text = "aaa" }
             n.testWithBothTables(listOf(s)) { table, result ->
                 val row = result.single()
                 assertEquals(n.id, row[table.numId])
@@ -123,10 +123,10 @@ class ViaTest : R2dbcDatabaseTestsBase() {
     @Test
     fun testConnection02() {
         withTables(*ViaTestData.allTables) {
-            val n1 = VNumber.new { number = 1 }.flush()
-            val n2 = VNumber.new { number = 2 }.flush()
-            val s1 = VString.new { text = "aaa" }.flush()
-            val s2 = VString.new { text = "bbb" }.flush()
+            val n1 = VNumber.new { number = 1 }
+            val n2 = VNumber.new { number = 2 }
+            val s1 = VString.new { text = "aaa" }
+            val s2 = VString.new { text = "bbb" }
 
             n1.testWithBothTables(listOf(s1, s2)) { table, row ->
                 assertEquals(2, row.count())
@@ -140,10 +140,10 @@ class ViaTest : R2dbcDatabaseTestsBase() {
     @Test
     fun testConnection03() {
         withTables(*ViaTestData.allTables) {
-            val n1 = VNumber.new { number = 1 }.flush()
-            val n2 = VNumber.new { number = 2 }.flush()
-            val s1 = VString.new { text = "aaa" }.flush()
-            val s2 = VString.new { text = "bbb" }.flush()
+            val n1 = VNumber.new { number = 1 }
+            val n2 = VNumber.new { number = 2 }
+            val s1 = VString.new { text = "aaa" }
+            val s2 = VString.new { text = "bbb" }
 
             n1.testWithBothTables(listOf(s1, s2)) { _, _ -> }
             n2.testWithBothTables(listOf(s1, s2)) { _, row ->
@@ -165,10 +165,10 @@ class ViaTest : R2dbcDatabaseTestsBase() {
     @Test
     fun testConnection04() {
         withTables(*ViaTestData.allTables) {
-            val n1 = VNumber.new { number = 1 }.flush()
-            val n2 = VNumber.new { number = 2 }.flush()
-            val s1 = VString.new { text = "aaa" }.flush()
-            val s2 = VString.new { text = "bbb" }.flush()
+            val n1 = VNumber.new { number = 1 }
+            val n2 = VNumber.new { number = 2 }
+            val s1 = VString.new { text = "aaa" }
+            val s2 = VString.new { text = "bbb" }
 
             n1.testWithBothTables(listOf(s1, s2)) { _, _ -> }
             n2.testWithBothTables(listOf(s1, s2)) { _, row ->
@@ -209,10 +209,10 @@ class ViaTest : R2dbcDatabaseTestsBase() {
     @Test
     fun testHierarchicalReferences() {
         withTables(NodesTable, NodeToNodes) {
-            val child1 = Node.newAndFlush {
+            val child1 = Node.new {
                 name = "child1"
                 parents = SizedCollection(
-                    Node.newAndFlush { name = "root" }
+                    Node.new { name = "root" }
                 )
             }
 
@@ -221,7 +221,7 @@ class ViaTest : R2dbcDatabaseTestsBase() {
             assertEquals(0L, root.parents.count())
             assertEquals(1L, root.children.count())
 
-            val child2 = Node.new { name = "child2" }.flush()
+            val child2 = Node.new { name = "child2" }
             root.children = SizedCollection(listOf(child1, child2))
 
             assertEquals(root, child1.parents.singleOrNull())
@@ -232,7 +232,7 @@ class ViaTest : R2dbcDatabaseTestsBase() {
     @Test
     fun testRefresh() {
         withTables(*ViaTestData.allTables) {
-            val s = VString.new { text = "ccc" }.flush().apply {
+            val s = VString.new { text = "ccc" }.apply {
                 refresh(true)
             }
             assertEquals("ccc", s.text)
@@ -242,13 +242,13 @@ class ViaTest : R2dbcDatabaseTestsBase() {
     @Test
     fun testWarmUpOnHierarchicalEntities() {
         withTables(NodesTable, NodeToNodes) {
-            val child1 = Node.newAndFlush { name = "child1" }
-            val child2 = Node.newAndFlush { name = "child1" }
-            val root1 = Node.newAndFlush {
+            val child1 = Node.new { name = "child1" }
+            val child2 = Node.new { name = "child1" }
+            val root1 = Node.new {
                 name = "root1"
                 children = SizedCollection(child1)
             }
-            val root2 = Node.newAndFlush {
+            val root2 = Node.new {
                 name = "root2"
                 children = SizedCollection(child1, child2)
             }
@@ -296,12 +296,12 @@ class ViaTest : R2dbcDatabaseTestsBase() {
     @Test
     fun testOrderBy() {
         withTables(NodesTable, NodeToNodes) {
-            val root = NodeOrdered.new { name = "root" }.flush()
+            val root = NodeOrdered.new { name = "root" }
             listOf("#3", "#0", "#2", "#4", "#1").forEach {
                 val n = NodeOrdered.new {
                     name = it
                     parents = SizedCollection(listOf(root))
-                }.flush()
+                }
             }
 
             root.children.toList().forEachIndexed { index, node ->
@@ -354,30 +354,30 @@ class ViaTest : R2dbcDatabaseTestsBase() {
     @Test
     fun testAdditionalLinkDataUsingCompositeIdInnerTable() {
         withTables(Projects, Tasks, ProjectTasks) {
-            val p1 = Project.new { name = "Project 1" }.flush()
-            val p2 = Project.new { name = "Project 2" }.flush()
-            val t1 = Task.new { title = "Task 1" }.flush()
-            val t2 = Task.new { title = "Task 2" }.flush()
-            val t3 = Task.new { title = "Task 3" }.flush()
+            val p1 = Project.new { name = "Project 1" }
+            val p2 = Project.new { name = "Project 2" }
+            val t1 = Task.new { title = "Task 1" }
+            val t2 = Task.new { title = "Task 2" }
+            val t3 = Task.new { title = "Task 3" }
 
             ProjectTask.new(
                 CompositeID {
                     it[ProjectTasks.task] = t1.id
                     it[ProjectTasks.project] = p1.id
                 }
-            ) { approved = true }.flush()
+            ) { approved = true }
             ProjectTask.new(
                 CompositeID {
                     it[ProjectTasks.task] = t2.id
                     it[ProjectTasks.project] = p2.id
                 }
-            ) { approved = false }.flush()
+            ) { approved = false }
             ProjectTask.new(
                 CompositeID {
                     it[ProjectTasks.task] = t3.id
                     it[ProjectTasks.project] = p2.id
                 }
-            ) { approved = false }.flush()
+            ) { approved = false }
 
             commit()
 

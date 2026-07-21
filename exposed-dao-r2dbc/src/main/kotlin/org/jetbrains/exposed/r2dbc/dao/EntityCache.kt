@@ -2,6 +2,7 @@ package org.jetbrains.exposed.r2dbc.dao
 
 import kotlinx.coroutines.flow.firstOrNull
 import org.jetbrains.exposed.v1.core.Column
+import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.dao.id.IdTable
@@ -11,7 +12,7 @@ import org.jetbrains.exposed.v1.r2dbc.LazySizedCollection
 import org.jetbrains.exposed.v1.r2dbc.R2dbcTransaction
 import org.jetbrains.exposed.v1.r2dbc.SchemaUtils
 import org.jetbrains.exposed.v1.r2dbc.SizedIterable
-import org.jetbrains.exposed.v1.r2dbc.insert
+import org.jetbrains.exposed.v1.r2dbc.batchInsert
 import org.jetbrains.exposed.v1.r2dbc.selectAll
 import java.util.LinkedHashMap
 import java.util.concurrent.ConcurrentHashMap
@@ -304,76 +305,84 @@ class EntityCache(private val transaction: R2dbcTransaction) {
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
     internal suspend fun <ID : Any> flushInserts(table: IdTable<ID>) {
-        val entitiesToInsert = inserts.remove(table)?.toList().orEmpty()
+        var entitiesToInsert = inserts.remove(table)?.toList().orEmpty()
         if (entitiesToInsert.isEmpty()) return
 
-        // We have to handle self references in r2dbc here comparing to jdbc, because
-        // in jdbc the entity that gets self reference would be inserted in the moment
-        // of setting that self reference
-        val entitiesWithSelfRefs = mutableListOf<Entity<*>>()
+        while (entitiesToInsert.isNotEmpty()) {
+            val (currentBatch, nextBatch) = partitionEntitiesForInsert(entitiesToInsert, table)
+            entitiesToInsert = nextBatch
 
-        for (entity in entitiesToInsert) {
-            val entityId = entity.id
-            val allWriteValues = entity.writeValues.toMap()
+            // Snapshot writeValues before the batchInsert reads them, so we can merge
+            // client-set values back into `_readValues` for drivers that only return
+            // generated columns.
+            val writeValuesSnapshots = currentBatch.map { it.writeValues.toMap() }
 
-            // Separate self-references to the same table whose target id is not yet generated.
-            // Such values cannot be included in the INSERT because the referenced id does not
-            // exist yet. They are applied as a follow-up UPDATE once the id has been generated.
-            val selfRefs = allWriteValues.filter { (key, value) ->
-                key.referee == table.id && value is EntityID<*> && value._value == null
-            }
-            val insertValues = allWriteValues - selfRefs.keys
-
-            val insertStatement = table.insert {
-                for ((column, value) in insertValues) {
-                    it[column] = value
+            val genRows = table.batchInsert(currentBatch) { entry ->
+                for ((c, v) in entry.writeValues) {
+                    this[c] = v
                 }
             }
 
-            val resultRow = insertStatement.resultedValues?.firstOrNull()
-
-            if (resultRow != null) {
-                val generatedId = resultRow[table.id]
-                if (entityId._value == null) {
-                    entityId._value = generatedId.value
-                }
-                entity._readValues = resultRow
+            currentBatch.forEachIndexed { idx, entity ->
+                val resultRow = genRows[idx]
+                adoptInsertResult(entity, resultRow, writeValuesSnapshots[idx], table)
             }
-
-            // If the INSERT didn't return values for database-generated columns (e.g. DEFAULTs or
-            // BEFORE INSERT triggers on dialects that don't support RETURNING for all columns),
-            // re-SELECT the row so users can read those values without an explicit refresh().
-            val needsRefresh = entityId._value != null && table.columns.any { col ->
-                col.isDatabaseGenerated() && entity._readValues?.hasValue(col) != true
-            }
-            if (needsRefresh) {
-                @Suppress("UNCHECKED_CAST")
-                val freshRow = table.selectAll().where { table.id eq entityId as EntityID<ID> }.firstOrNull()
-                if (freshRow != null) entity._readValues = freshRow
-            }
-
-            entity.writeValues.clear()
-
-            // Restore self-reference values to writeValues for a post-insert update.
-            // The referenced id is now populated, so these can be safely serialized.
-            if (selfRefs.isNotEmpty()) {
-                for ((column, value) in selfRefs) {
-                    entity.writeValues[column] = value
-                }
-                entitiesWithSelfRefs.add(entity)
-            }
-
-            store(entity)
-
-            transaction.registerChange(entity.klass, entity.id, EntityChangeType.Created)
-        }
-
-        for (entity in entitiesWithSelfRefs) {
-            entity.flush()
         }
 
         transaction.alertSubscribers()
+    }
+
+    private fun partitionEntitiesForInsert(
+        entities: List<Entity<*>>,
+        table: IdTable<*>
+    ): Pair<List<Entity<*>>, List<Entity<*>>> {
+        val firstEntityColumns = entities.first().writeValues.keys
+        return entities.partition { entity ->
+            val refereeFromSameTableAlreadyCreated = entity.writeValues.none { (key, value) ->
+                key.referee == table.id && value is EntityID<*> && value._value == null
+            }
+            val columnSetAlignedWithFirstEntity = entity.writeValues.keys == firstEntityColumns
+            refereeFromSameTableAlreadyCreated && columnSetAlignedWithFirstEntity
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private suspend fun <ID : Any> adoptInsertResult(
+        entity: Entity<*>,
+        resultRow: ResultRow,
+        writeValuesSnapshot: Map<Column<Any?>, Any?>,
+        table: IdTable<ID>
+    ) {
+        val entityId = entity.id as EntityID<ID>
+        val generatedId = resultRow[table.id]
+        if (entityId._value == null) {
+            entityId._value = generatedId.value
+            entity.writeIdColumnValue(entity.klass.table, generatedId)
+        }
+        entity._readValues = resultRow
+
+        // R2DBC drivers commonly return only generated columns, leaving `_readValues` missing
+        // client-set values. Merge them in so subsequent reads see a complete row.
+        val readValues = entity._readValues
+        if (readValues != null) {
+            for ((col, value) in writeValuesSnapshot) {
+                if (!readValues.hasValue(col)) readValues[col] = value
+            }
+        }
+
+        // If any table column is still missing (e.g. a database-side `defaultExpression` that the
+        // INSERT didn't return), re-SELECT the row.
+        if (table.columns.any { entity._readValues?.hasValue(it) != true }) {
+            val freshRow = table.selectAll().where { table.id eq entityId }.firstOrNull()
+            if (freshRow != null) entity._readValues = freshRow
+        }
+
+        entity.writeValues.clear()
+
+        store(entity)
+        transaction.registerChange(entity.klass, entity.id, EntityChangeType.Created)
     }
 }
 

@@ -35,7 +35,7 @@ class AttachEntityTests : R2dbcDatabaseTestsBase() {
         withTables(Items) {
             val item = newTransaction {
                 maxAttempts = 1
-                Item.new { name = "foo" }.flush()
+                Item.new { name = "foo" }
             }
             newTransaction {
                 maxAttempts = 1
@@ -59,7 +59,7 @@ class AttachEntityTests : R2dbcDatabaseTestsBase() {
         withTables(Items) {
             val item = newTransaction {
                 maxAttempts = 1
-                Item.new { name = "original" }.flush()
+                Item.new { name = "original" }
             }
 
             newTransaction {
@@ -81,7 +81,7 @@ class AttachEntityTests : R2dbcDatabaseTestsBase() {
         withTables(Items) {
             val item = newTransaction {
                 maxAttempts = 1
-                Item.new { name = "original" }.flush()
+                Item.new { name = "original" }
             }
 
             newTransaction {
@@ -103,7 +103,7 @@ class AttachEntityTests : R2dbcDatabaseTestsBase() {
         withTables(Items) {
             val item = newTransaction {
                 maxAttempts = 1
-                Item.new { name = "original" }.flush()
+                Item.new { name = "original" }
             }
 
             newTransaction {
@@ -121,7 +121,7 @@ class AttachEntityTests : R2dbcDatabaseTestsBase() {
             newTransaction {
                 maxAttempts = 1
                 expectException<EntityNotFoundException> {
-                    val item = Item.new { name = "doomed" }.flush()
+                    val item = Item.new { name = "doomed" }
                     item.delete()
                     item.name = "boom"
                 }
@@ -134,7 +134,7 @@ class AttachEntityTests : R2dbcDatabaseTestsBase() {
         withTables(Items) {
             val item = newTransaction {
                 maxAttempts = 1
-                Item.new { name = "doomed" }.flush()
+                Item.new { name = "doomed" }
             }
 
             newTransaction {
@@ -157,7 +157,7 @@ class AttachEntityTests : R2dbcDatabaseTestsBase() {
         withTables(Items) {
             val item = newTransaction {
                 maxAttempts = 1
-                Item.new { name = "original" }.flush()
+                Item.new { name = "original" }
             }
 
             newTransaction {

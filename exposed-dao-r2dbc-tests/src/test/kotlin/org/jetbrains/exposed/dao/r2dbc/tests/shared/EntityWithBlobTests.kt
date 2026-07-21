@@ -36,7 +36,7 @@ class EntityWithBlobTests : R2dbcDatabaseTestsBase() {
         withTables(BlobTable) {
             val y1 = BlobEntity.new {
                 content = ExposedBlob("foo".toByteArray())
-            }.flush()
+            }
 
             var y2 = BlobEntity.reload(y1)!!
             assertEquals(String(y2.content!!.bytes), "foo")

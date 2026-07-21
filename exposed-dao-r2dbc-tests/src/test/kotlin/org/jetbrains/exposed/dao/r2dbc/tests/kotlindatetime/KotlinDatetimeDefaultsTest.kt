@@ -64,11 +64,11 @@ class KotlinDatetimeDefaultsTest : R2dbcDatabaseTestsBase() {
     fun testDefaultsWithExplicit01() {
         withTables(TableWithDBDefault) {
             val created = listOf(
-                DBDefault.new { field = "1" }.flush(),
+                DBDefault.new { field = "1" },
                 DBDefault.new {
                     field = "2"
                     t1 = localDateTimeNowMinusUnit(5, DurationUnit.DAYS)
-                }.flush()
+                }
             )
             commit()
             created.forEach {
@@ -88,8 +88,8 @@ class KotlinDatetimeDefaultsTest : R2dbcDatabaseTestsBase() {
                 DBDefault.new {
                     field = "2"
                     t1 = localDateTimeNowMinusUnit(5, DurationUnit.DAYS)
-                }.flush(),
-                DBDefault.new { field = "1" }.flush()
+                },
+                DBDefault.new { field = "1" }
             )
 
             // R2DBC: INSERT/RETURNING doesn't bring back `defaultExpression` columns (`t1`, `t2`),
@@ -106,8 +106,8 @@ class KotlinDatetimeDefaultsTest : R2dbcDatabaseTestsBase() {
     fun testDefaultsInvokedOnlyOncePerEntity() {
         withTables(TableWithDBDefault) {
             TableWithDBDefault.cIndex = 0
-            val db1 = DBDefault.new { field = "1" }.flush()
-            val db2 = DBDefault.new { field = "2" }.flush()
+            val db1 = DBDefault.new { field = "1" }
+            val db2 = DBDefault.new { field = "2" }
             assertEquals(0, db1.clientDefault)
             assertEquals(1, db2.clientDefault)
             assertEquals(2, TableWithDBDefault.cIndex)
@@ -128,7 +128,7 @@ class KotlinDatetimeDefaultsTest : R2dbcDatabaseTestsBase() {
     @Test
     fun testCustomDefaultTimestampFunctionWithEntity() {
         withTables(excludeSettings = TestDB.ALL - TestDB.ALL_POSTGRES - TestDB.MYSQL_V8 - TestDB.ALL_H2_V2, DefaultTimestampTable) {
-            val entity = DefaultTimestampEntity.new {}.flush()
+            val entity = DefaultTimestampEntity.new {}
             // R2DBC: `defaultExpression(dbTimestampNow)` is evaluated by the DB and isn't part of
             // the INSERT's resultedValues, so `entity.timestamp` has no cached value yet. Flush and
             // refresh so the row is loaded back from the DB (JDBC does this implicitly on read).

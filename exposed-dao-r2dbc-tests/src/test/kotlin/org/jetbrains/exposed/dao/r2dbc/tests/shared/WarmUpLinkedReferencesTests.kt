@@ -40,14 +40,14 @@ class WarmUpLinkedReferencesTests : R2dbcDatabaseTestsBase() {
             val boxEntities = (0..4).map {
                 EBox.new {
                     value = it
-                }.flush()
+                }
             }
 
-            boxEntities.forEach {
-                val e = EBoxItem.new {
-                    value = it.id.value
-                }.initializedEntity
-                e.box.set(it)
+            boxEntities.forEach { boxEntity ->
+                EBoxItem.new {
+                    value = boxEntity.id.value
+                    box.set(boxEntity)
+                }
             }
             flushCache()
 

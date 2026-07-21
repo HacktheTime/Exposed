@@ -46,7 +46,7 @@ class EntityFieldWithTransformTest : R2dbcDatabaseTestsBase() {
         withTables(TransformationsTable) {
             val entity = TransformationEntity.new {
                 value = "stuff"
-            }.flush()
+            }
 
             assertEquals("stuff", entity.value)
 
@@ -63,7 +63,7 @@ class EntityFieldWithTransformTest : R2dbcDatabaseTestsBase() {
         withTables(NullableTransformationsTable) {
             val entity = NullableTransformationEntity.new {
                 value = "stuff"
-            }.flush()
+            }
 
             assertEquals("stuff", entity.value)
 
@@ -78,7 +78,7 @@ class EntityFieldWithTransformTest : R2dbcDatabaseTestsBase() {
     @Test
     fun testSetAndGetNullableValueWhileAbsent() {
         withTables(NullableTransformationsTable) {
-            val entity = NullableTransformationEntity.new {}.flush()
+            val entity = NullableTransformationEntity.new {}
 
             assertEquals(null, entity.value)
 
@@ -106,7 +106,7 @@ class EntityFieldWithTransformTest : R2dbcDatabaseTestsBase() {
         withTables(TableWithTransforms) {
             TableWithTransform.new {
                 value = 10
-            }.flush()
+            }
 
             // Correct DAO value
             assertEquals(10, TableWithTransform.all().first().value)
@@ -135,7 +135,7 @@ class EntityFieldWithTransformTest : R2dbcDatabaseTestsBase() {
         withTables(TransformationsTable) {
             ChainedTransformationEntity.new {
                 value = "qwertyuiop"
-            }.flush()
+            }
 
             assertEquals("qwert", ChainedTransformationEntity.all().first().value)
         }
@@ -160,7 +160,7 @@ class EntityFieldWithTransformTest : R2dbcDatabaseTestsBase() {
         withTables(TransformationsTable) {
             MemoizedChainedTransformationEntity.new {
                 value = "value#"
-            }.flush()
+            }
 
             val entity = MemoizedChainedTransformationEntity.all().first()
 

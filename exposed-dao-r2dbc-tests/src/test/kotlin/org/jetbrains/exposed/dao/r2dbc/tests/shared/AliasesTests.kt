@@ -16,7 +16,7 @@ class AliasesTests : R2dbcDatabaseTestsBase() {
         withTables(EntityTestsData.XTable, EntityTestsData.YTable) {
             val entity1 = EntityTestsData.XEntity.new {
                 this.b1 = false
-            }.flush()
+            }
 
             entityCache.clear()
 
@@ -33,7 +33,7 @@ class AliasesTests : R2dbcDatabaseTestsBase() {
         withTables(EntityTestsData.XTable, EntityTestsData.YTable) {
             val entity1 = EntityTestsData.XEntity.new {
                 this.b1 = false
-            }.flush()
+            }
 
             entityCache.clear()
 

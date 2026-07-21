@@ -100,7 +100,7 @@ object EntityTestsData {
                 }
                 val answer = when (type) {
                     XType.B -> BEntity.create { init() }
-                    else -> new { init() }.flush()
+                    else -> new { init() }
                 }
                 return answer
             }
@@ -115,7 +115,7 @@ object EntityTestsData {
             suspend fun create(init: AEntity.() -> Unit): BEntity {
                 val answer = new {
                     init()
-                }.flush()
+                }
                 return answer
             }
         }
@@ -135,7 +135,7 @@ class EntityTests : R2dbcDatabaseTestsBase() {
     @Test
     fun testDefaults01() {
         withTables(EntityTestsData.YTable, EntityTestsData.XTable) {
-            val x = EntityTestsData.XEntity.new { }.flush()
+            val x = EntityTestsData.XEntity.new { }
             assertEquals(x.b1, true, "b1 mismatched")
             assertEquals(x.b2, false, "b2 mismatched")
         }
@@ -146,7 +146,7 @@ class EntityTests : R2dbcDatabaseTestsBase() {
         withTables(EntityTestsData.YTable, EntityTestsData.XTable) {
             val a: EntityTestsData.AEntity = EntityTestsData.AEntity.create(false, EntityTestsData.XType.A)
             val b: EntityTestsData.BEntity = EntityTestsData.AEntity.create(false, EntityTestsData.XType.B) as EntityTestsData.BEntity
-            val y = EntityTestsData.YEntity.new { x = false }.flush()
+            val y = EntityTestsData.YEntity.new { x = false }
 
             assertEquals(a.b1, false, "a.b1 mismatched")
             assertEquals(b.b1, false, "b.b1 mismatched")
@@ -165,7 +165,7 @@ class EntityTests : R2dbcDatabaseTestsBase() {
         withTables(Humans) { testDb ->
             val y1 = Human.new {
                 h = "foo"
-            }.flush()
+            }
 
             y1.refresh(flush = false)
 
@@ -182,7 +182,7 @@ class EntityTests : R2dbcDatabaseTestsBase() {
         withTables(listOf(TestDB.SQLSERVER), Humans) { testDb ->
             val x = Human.new(2) {
                 h = "foo"
-            }.flush()
+            }
             x.refresh(flush = true)
             objectsToVerify.add(x to testDb)
         }
@@ -200,7 +200,7 @@ class EntityTests : R2dbcDatabaseTestsBase() {
     @Test
     fun testOneFieldEntity() {
         withTables(OneAutoFieldTable) {
-            val new = SingleFieldEntity.new { }.flush()
+            val new = SingleFieldEntity.new { }
             commit()
         }
     }
@@ -208,8 +208,8 @@ class EntityTests : R2dbcDatabaseTestsBase() {
     @Test
     fun testBackReference01() {
         withTables(EntityTestsData.YTable, EntityTestsData.XTable) {
-            val y = EntityTestsData.YEntity.new { }.flush()
-            val b = EntityTestsData.BEntity.new { }.flush()
+            val y = EntityTestsData.YEntity.new { }
+            val b = EntityTestsData.BEntity.new { }
             b.y.set(y)
             assertEquals(b, y.b())
         }
@@ -218,8 +218,8 @@ class EntityTests : R2dbcDatabaseTestsBase() {
     @Test
     fun testBackReference02() {
         withTables(EntityTestsData.YTable, EntityTestsData.XTable) {
-            val b = EntityTestsData.BEntity.new { }.flush()
-            val y = EntityTestsData.YEntity.new { }.flush()
+            val b = EntityTestsData.BEntity.new { }
+            val y = EntityTestsData.YEntity.new { }
             b.y.set(y)
             assertEquals(b, y.b())
         }
@@ -244,7 +244,7 @@ class EntityTests : R2dbcDatabaseTestsBase() {
             val itemA = Item.new {
                 name = "Item A"
                 price = oldPrice
-            }.flush()
+            }
             assertEquals(oldPrice, itemA.price)
             assertNotNull(Item.testCache(itemA.id))
 
@@ -283,7 +283,7 @@ class EntityTests : R2dbcDatabaseTestsBase() {
             val item = Item.new {
                 name = "Item A"
                 price = oldPrice
-            }.flush()
+            }
             assertEquals(oldPrice, item.price)
             assertNotNull(Item.testCache(item.id))
 
@@ -312,7 +312,7 @@ class EntityTests : R2dbcDatabaseTestsBase() {
             val item = Item.new {
                 name = "Item A"
                 price = oldPrice
-            }.flush()
+            }
             assertEquals(oldPrice, item.price)
             assertNotNull(Item.testCache(item.id))
 
@@ -348,7 +348,7 @@ class EntityTests : R2dbcDatabaseTestsBase() {
     @Timeout(value = 5000, unit = TimeUnit.MILLISECONDS)
     fun testSelfReferences() {
         withTables(SelfReferenceTable) {
-            val ref1 = SelfReferencedEntity.new { }.flush()
+            val ref1 = SelfReferencedEntity.new { }
             ref1.parent = ref1.id
             val refRow = SelfReferenceTable.selectAll().where { SelfReferenceTable.id eq ref1.id }.single()
             assertEquals(ref1.id._value, refRow[SelfReferenceTable.parentId]!!.value)
@@ -360,17 +360,17 @@ class EntityTests : R2dbcDatabaseTestsBase() {
         withTables(Posts, Boards, Categories) {
             val category1 = Category.new {
                 title = "cat1"
-            }.flush()
+            }
 
             val post1 = Post.new {
                 optCategory.set(category1)
-                category.set(Category.new { title = "title" }.initializedEntity)
-            }.flush()
+                category.set(Category.new { title = "title" })
+            }
 
             val post2 = Post.new {
                 optCategory.set(category1)
                 parent.set(post1)
-            }.flush()
+            }
 
             assertEquals(2L, Post.all().count())
             assertEquals(2, category1.posts.count())
@@ -385,16 +385,16 @@ class EntityTests : R2dbcDatabaseTestsBase() {
             addLogger(StdOutSqlLogger) // this is left in on purpose for flaky tests
             val category1 = Category.new {
                 title = "cat1"
-            }.flush()
+            }
 
             Post.new {
                 optCategory.set(category1)
-                category.set(Category.new { title = "title" }.initializedEntity)
-            }.flush()
+                category.set(Category.new { title = "title" })
+            }
 
             Post.new {
                 optCategory.set(category1)
-            }.flush()
+            }
             commit()
 
             assertEquals(2, category1.posts.count())
@@ -410,9 +410,9 @@ class EntityTests : R2dbcDatabaseTestsBase() {
     fun testOrderByOnEntities() {
         withTables(Categories) {
             Categories.deleteAll()
-            val category1 = Category.new { title = "Test1" }.flush()
-            val category3 = Category.new { title = "Test3" }.flush()
-            val category2 = Category.new { title = "Test2" }.flush()
+            val category1 = Category.new { title = "Test1" }
+            val category3 = Category.new { title = "Test3" }
+            val category2 = Category.new { title = "Test2" }
 
             assertEqualLists(listOf(category1, category3, category2), Category.all().toList())
             assertEqualLists(listOf(category1, category2, category3), Category.all().orderBy(Categories.title to SortOrder.ASC).toList())
@@ -473,8 +473,8 @@ class EntityTests : R2dbcDatabaseTestsBase() {
     @Test
     fun testInsertChildWithoutFlush() {
         withTables(Boards, Posts, Categories) {
-            val parent = Post.new { this.category.set(Category.new { title = "title" }.initializedEntity) }.flush()
-            Post.new { this.parent.set(parent) }.flush() // first flush before referencing
+            val parent = Post.new { this.category.set(Category.new { title = "title" }) }
+            Post.new { this.parent.set(parent) } // first flush before referencing
             assertEquals(2L, Post.all().count())
         }
     }
@@ -482,8 +482,8 @@ class EntityTests : R2dbcDatabaseTestsBase() {
     @Test
     fun testInsertNonChildWithoutFlush() {
         withTables(Boards, Posts, Categories) {
-            val board = Board.new { name = "irrelevant" }.flush()
-            Post.new { this.board.set(board) }.flush()
+            val board = Board.new { name = "irrelevant" }
+            Post.new { this.board.set(board) }
             assertEquals(0, flushCache().size)
         }
     }
@@ -491,9 +491,9 @@ class EntityTests : R2dbcDatabaseTestsBase() {
     @Test
     fun testThatQueriesWithinOtherQueryIteratorWorksFine() {
         withTables(Boards, Posts, Categories) {
-            val board1 = Board.new { name = "irrelevant" }.flush()
-            val board2 = Board.new { name = "relevant" }.flush()
-            val post1 = Post.new { this.board.set(board1) }.flush()
+            val board1 = Board.new { name = "irrelevant" }
+            val board2 = Board.new { name = "relevant" }
+            val post1 = Post.new { this.board.set(board1) }
 
             Board.all().forEach {
                 it.posts.count() to it.posts
@@ -507,9 +507,9 @@ class EntityTests : R2dbcDatabaseTestsBase() {
     @Test
     fun testInsertChildWithFlush() {
         withTables(Boards, Posts, Categories) {
-            val parent = Post.new { this.category.set(Category.new { title = "title" }.initializedEntity) }.flush()
+            val parent = Post.new { this.category.set(Category.new { title = "title" }) }
             assertNotNull(parent.id._value)
-            Post.new { this.parent.set(parent) }.flush()
+            Post.new { this.parent.set(parent) }
             assertEquals(0, flushCache().size)
         }
     }
@@ -517,27 +517,27 @@ class EntityTests : R2dbcDatabaseTestsBase() {
     @Test
     fun testInsertChildWithChild() {
         withTables(Boards, Posts, Categories) {
-            val parent = Post.new { this.category.set(Category.new { title = "title1" }.initializedEntity) }.flush()
+            val parent = Post.new { this.category.set(Category.new { title = "title1" }) }
             val child1 = Post.new {
                 this.parent.set(parent)
-                this.category.set(Category.new { title = "title2" }.initializedEntity)
-            }.flush()
-            Post.new { this.parent.set(child1) }.flush()
+                this.category.set(Category.new { title = "title2" })
+            }
+            Post.new { this.parent.set(child1) }
         }
     }
 
     @Test
     fun testOptionalReferrersWithDifferentKeys() {
         withTables(Boards, Posts, Categories) {
-            val board = Board.new { name = "irrelevant" }.flush()
+            val board = Board.new { name = "irrelevant" }
             val post1 = Post.new {
                 this.board.set(board)
-                this.category.set(Category.new { title = "title" }.initializedEntity)
-            }.flush()
+                this.category.set(Category.new { title = "title" })
+            }
             assertEquals(1, board.posts.count())
             assertEquals(post1, board.posts.single())
 
-            Post.new { this.board.set(board) }.flush()
+            Post.new { this.board.set(board) }
             assertEquals(2, board.posts.count())
         }
     }
@@ -546,7 +546,7 @@ class EntityTests : R2dbcDatabaseTestsBase() {
     fun testErrorOnSetToDeletedEntity() {
         withTables(Boards) {
             expectException<EntityNotFoundException> {
-                val board = Board.new { name = "irrelevant" }.flush()
+                val board = Board.new { name = "irrelevant" }
                 board.delete()
                 board.name = "Cool"
             }
@@ -556,12 +556,12 @@ class EntityTests : R2dbcDatabaseTestsBase() {
     @Test
     fun testCacheInvalidatedOnDSLDelete() {
         withTables(Boards) {
-            val board1 = Board.new { name = "irrelevant" }.flush()
+            val board1 = Board.new { name = "irrelevant" }
             assertNotNull(Board.testCache(board1.id))
             board1.delete()
             assertNull(Board.testCache(board1.id))
 
-            val board2 = Board.new { name = "irrelevant" }.flush()
+            val board2 = Board.new { name = "irrelevant" }
             assertNotNull(Board.testCache(board2.id))
             Boards.deleteWhere { Boards.id eq board2.id }
             assertNull(Board.testCache(board2.id))
@@ -571,12 +571,12 @@ class EntityTests : R2dbcDatabaseTestsBase() {
     @Test
     fun testCacheInvalidatedOnDSLUpdate() {
         withTables(Boards) {
-            val board1 = Board.new { name = "irrelevant" }.flush()
+            val board1 = Board.new { name = "irrelevant" }
             assertNotNull(Board.testCache(board1.id))
             board1.name = "relevant"
             assertEquals("relevant", board1.name)
 
-            val board2 = Board.new { name = "irrelevant2" }.flush()
+            val board2 = Board.new { name = "irrelevant2" }
             assertNotNull(Board.testCache(board2.id))
             Boards.update({ Boards.id eq board2.id }) {
                 it[name] = "relevant2"
@@ -606,10 +606,10 @@ class EntityTests : R2dbcDatabaseTestsBase() {
     class User(id: EntityID<Int>) : IntEntity(id) {
         companion object : IntEntityClass<User>(Users) {
             suspend fun create(name: String): User {
-                val h = Human.new { h = name.take(2) }.flush()
+                val h = Human.new { h = name.take(2) }
                 return User.new(h.id.value) {
                     this.name = name
-                }.flush()
+                }
             }
         }
 
@@ -622,15 +622,15 @@ class EntityTests : R2dbcDatabaseTestsBase() {
         withTables(Categories, Posts, Boards) {
             val category1 = Category.new {
                 title = "category1"
-            }.flush()
+            }
 
             val category2 = Category.new {
                 title = "category2"
-            }.flush()
+            }
 
             val post1 = Post.new {
                 category.set(category1)
-            }.flush()
+            }
 
             assertEquals(post1.category(), category1)
 
@@ -638,7 +638,7 @@ class EntityTests : R2dbcDatabaseTestsBase() {
 
             val post2 = Post.new {
                 category.set(category1)
-            }.flush()
+            }
 
             flushCache()
             Post.reload(post1)
@@ -677,7 +677,7 @@ class EntityTests : R2dbcDatabaseTestsBase() {
         withTables(listOf(TestDB.SQLSERVER), Parents, Children) {
             val parentId = Parent.new {
                 name = "parent1"
-            }.flush().id.value
+            }.id.value
 
             commit()
 
@@ -685,7 +685,7 @@ class EntityTests : R2dbcDatabaseTestsBase() {
             val child = Child.new(100L) {
                 this.parent.set(parent)
                 name = "child1"
-            }.flush()
+            }
             child.flush()
 
             assertEquals(100L, child.id.value)
@@ -696,7 +696,7 @@ class EntityTests : R2dbcDatabaseTestsBase() {
     @Test
     fun `newly created entity flushed successfully`() {
         withTables(Boards) {
-            val board = Board.new { name = "Board1" }.flush()
+            val board = Board.new { name = "Board1" }
             assertEquals(false, board.flush())
 
             assertEquals("Board1", board.name)
@@ -818,26 +818,26 @@ class EntityTests : R2dbcDatabaseTestsBase() {
         withTables(Regions, Schools) {
             val region1 = Region.new {
                 name = "United Kingdom"
-            }.flush()
+            }
 
             val region2 = Region.new {
                 name = "England"
-            }.flush()
+            }
 
             val school1 = School.new {
                 name = "Eton"
                 region.set(region1)
-            }.flush()
+            }
 
             val school2 = School.new {
                 name = "Harrow"
                 region.set(region1)
-            }.flush()
+            }
 
             val school3 = School.new {
                 name = "Winchester"
                 region.set(region2)
-            }.flush()
+            }
 
             commit()
 
@@ -866,15 +866,15 @@ class EntityTests : R2dbcDatabaseTestsBase() {
         withTables(Regions, Schools) {
             val region1 = Region.new {
                 name = "United Kingdom"
-            }.flush()
+            }
             School.new {
                 name = "Eton"
                 region.set(region1)
-            }.flush()
+            }
             School.new {
                 name = "Harrow"
                 region.set(region1)
-            }.flush()
+            }
 
             commit()
 
@@ -926,12 +926,12 @@ class EntityTests : R2dbcDatabaseTestsBase() {
         withTables(Regions, Schools) {
             val region1 = Region.new {
                 name = "United Kingdom"
-            }.flush()
+            }
 
             val school1 = School.new {
                 name = "Eton"
                 region.set(region1)
-            }.flush()
+            }
 
             commit()
 
@@ -952,17 +952,17 @@ class EntityTests : R2dbcDatabaseTestsBase() {
         withTables(Regions, Schools) {
             val region1 = Region.new {
                 name = "United Kingdom"
-            }.flush()
+            }
 
             val region2 = Region.new {
                 name = "England"
-            }.flush()
+            }
 
             val school1 = School.new {
                 name = "Eton"
                 region.set(region1)
                 secondaryRegion.set(region2)
-            }.flush().apply {
+            }.apply {
                 // otherwise Oracle provides school1.id = 0 to testCache(), which returns null
                 if (currentDialectTest is OracleDialect) flush()
             }
@@ -970,7 +970,7 @@ class EntityTests : R2dbcDatabaseTestsBase() {
             val school2 = School.new {
                 name = "Harrow"
                 region.set(region1)
-            }.flush()
+            }
 
             commit()
 
@@ -992,16 +992,16 @@ class EntityTests : R2dbcDatabaseTestsBase() {
         withTables(Regions, Schools) {
             val region1 = Region.new {
                 name = "United Kingdom"
-            }.flush()
+            }
             val region2 = Region.new {
                 name = "England"
-            }.flush()
+            }
 
             val school1 = School.new {
                 name = "Eton"
                 region.set(region1)
                 secondaryRegion.set(region2)
-            }.flush()
+            }
 
             commit()
 
@@ -1022,46 +1022,46 @@ class EntityTests : R2dbcDatabaseTestsBase() {
         withTables(Regions, Schools, Students) {
             val region1 = Region.new {
                 name = "United Kingdom"
-            }.flush()
+            }
 
             val region2 = Region.new {
                 name = "England"
-            }.flush()
+            }
 
             val school1 = School.new {
                 name = "Eton"
                 region.set(region1)
-            }.flush()
+            }
 
             val school2 = School.new {
                 name = "Harrow"
                 region.set(region1)
-            }.flush()
+            }
 
             val school3 = School.new {
                 name = "Winchester"
                 region.set(region2)
-            }.flush()
+            }
 
             val student1 = Student.new {
                 name = "James Smith"
                 school.set(school1)
-            }.flush()
+            }
 
             val student2 = Student.new {
                 name = "Jack Smith"
                 school.set(school2)
-            }.flush()
+            }
 
             val student3 = Student.new {
                 name = "Henry Smith"
                 school.set(school3)
-            }.flush()
+            }
 
             val student4 = Student.new {
                 name = "Peter Smith"
                 school.set(school3)
-            }.flush()
+            }
 
             commit()
 
@@ -1083,27 +1083,27 @@ class EntityTests : R2dbcDatabaseTestsBase() {
         withTables(Regions, Schools, Students) {
             val region1 = Region.new {
                 name = "United Kingdom"
-            }.flush()
+            }
 
             val school1 = School.new {
                 name = "Eton"
                 region.set(region1)
-            }.flush()
+            }
 
             val student1 = Student.new {
                 name = "James Smith"
                 school.set(school1)
-            }.flush()
+            }
 
             val student2 = Student.new {
                 name = "Jack Smith"
                 school.set(school1)
-            }.flush()
+            }
 
             val student3 = Student.new {
                 name = "Henry Smith"
                 school.set(school1)
-            }.flush()
+            }
 
             commit()
 
@@ -1123,32 +1123,32 @@ class EntityTests : R2dbcDatabaseTestsBase() {
         withTables(Regions, Schools, Students, Detentions) {
             val region1 = Region.new {
                 name = "United Kingdom"
-            }.flush()
+            }
 
             val school1 = School.new {
                 name = "Eton"
                 region.set(region1)
-            }.flush()
+            }
 
             val student1 = Student.new {
                 name = "James Smith"
                 school.set(school1)
-            }.flush()
+            }
 
             val student2 = Student.new {
                 name = "Jack Smith"
                 school.set(school1)
-            }.flush()
+            }
 
             val detention1 = Detention.new {
                 reason = "Poor Behaviour"
                 student.set(student1)
-            }.flush()
+            }
 
             val detention2 = Detention.new {
                 reason = "Poor Behaviour"
                 student.set(student1)
-            }.flush()
+            }
 
             commit()
 
@@ -1174,41 +1174,41 @@ class EntityTests : R2dbcDatabaseTestsBase() {
 
             val region1 = Region.new {
                 name = "United Kingdom"
-            }.flush()
+            }
 
             val region2 = Region.new {
                 name = "England"
-            }.flush()
+            }
 
             val school1 = School.new {
                 name = "Eton"
                 region.set(region1)
-            }.flush()
+            }
 
             val school2 = School.new {
                 name = "Harrow"
                 region.set(region1)
-            }.flush()
+            }
 
             val school3 = School.new {
                 name = "Winchester"
                 region.set(region2)
-            }.flush()
+            }
 
             val holiday1 = Holiday.new {
                 holidayStart = now
                 holidayEnd = now10
-            }.flush()
+            }
 
             val holiday2 = Holiday.new {
                 holidayStart = now
                 holidayEnd = now10
-            }.flush()
+            }
 
             val holiday3 = Holiday.new {
                 holidayStart = now
                 holidayEnd = now10
-            }.flush()
+            }
 
             school1.holidays = SizedCollection(listOf(holiday1, holiday2))
             school2.holidays = SizedCollection(listOf(holiday3))
@@ -1235,27 +1235,27 @@ class EntityTests : R2dbcDatabaseTestsBase() {
 
             val region1 = Region.new {
                 name = "United Kingdom"
-            }.flush()
+            }
 
             val school1 = School.new {
                 name = "Eton"
                 region.set(region1)
-            }.flush()
+            }
 
             val holiday1 = Holiday.new {
                 holidayStart = now
                 holidayEnd = now10
-            }.flush()
+            }
 
             val holiday2 = Holiday.new {
                 holidayStart = now
                 holidayEnd = now10
-            }.flush()
+            }
 
             val holiday3 = Holiday.new {
                 holidayStart = now
                 holidayEnd = now10
-            }.flush()
+            }
 
             SchoolHolidays.insert {
                 it[school] = school1.id
@@ -1291,32 +1291,32 @@ class EntityTests : R2dbcDatabaseTestsBase() {
         withTables(Regions, Schools, Holidays, SchoolHolidays, Students, Notes) {
             val region1 = Region.new {
                 name = "United Kingdom"
-            }.flush()
+            }
 
             val school1 = School.new {
                 name = "Eton"
                 region.set(region1)
-            }.flush()
+            }
 
             val student1 = Student.new {
                 name = "James Smith"
                 school.set(school1)
-            }.flush()
+            }
 
             val student2 = Student.new {
                 name = "Jack Smith"
                 school.set(school1)
-            }.flush()
+            }
 
             val note1 = Note.new {
                 text = "Note text"
                 student.set(student1)
-            }.flush()
+            }
 
             val note2 = Note.new {
                 text = "Note text"
                 student.set(student2)
-            }.flush()
+            }
 
             School.all().with(School::students, Student::notes)
 
@@ -1334,32 +1334,32 @@ class EntityTests : R2dbcDatabaseTestsBase() {
         withTables(Regions, Schools, Students, StudentBios) {
             val region1 = Region.new {
                 name = "United States"
-            }.flush()
+            }
 
             val school1 = School.new {
                 name = "Eton"
                 region.set(region1)
-            }.flush()
+            }
 
             val student1 = Student.new {
                 name = "James Smith"
                 school.set(school1)
-            }.flush()
+            }
 
             val student2 = Student.new {
                 name = "John Smith"
                 school.set(school1)
-            }.flush()
+            }
 
             val bio1 = StudentBio.new {
                 student.set(student1)
                 dateOfBirth = "01/01/2000"
-            }.flush()
+            }
 
             val bio2 = StudentBio.new {
                 student.set(student2)
                 dateOfBirth = "01/01/2002"
-            }.flush()
+            }
 
             commit()
 
@@ -1379,32 +1379,32 @@ class EntityTests : R2dbcDatabaseTestsBase() {
         withTables(Regions, Schools, Students, StudentBios) {
             val region1 = Region.new {
                 name = "United States"
-            }.flush()
+            }
 
             val school1 = School.new {
                 name = "Eton"
                 region.set(region1)
-            }.flush()
+            }
 
             val student1 = Student.new {
                 name = "James Smith"
                 school.set(school1)
-            }.flush()
+            }
 
             val student2 = Student.new {
                 name = "John Smith"
                 school.set(school1)
-            }.flush()
+            }
 
             val bio1 = StudentBio.new {
                 student.set(student1)
                 dateOfBirth = "01/01/2000"
-            }.flush()
+            }
 
             val bio2 = StudentBio.new {
                 student.set(student2)
                 dateOfBirth = "01/01/2002"
-            }.flush()
+            }
 
             commit()
 
@@ -1423,27 +1423,27 @@ class EntityTests : R2dbcDatabaseTestsBase() {
         withTables(Regions, Schools, Students, StudentBios) {
             val region1 = Region.new {
                 name = "United States"
-            }.flush()
+            }
 
             val school1 = School.new {
                 name = "Eton"
                 region.set(region1)
-            }.flush()
+            }
 
             val student1 = Student.new {
                 name = "James Smith"
                 school.set(school1)
-            }.flush()
+            }
 
             val student2 = Student.new {
                 name = "John Smith"
                 school.set(school1)
-            }.flush()
+            }
 
             val bio1 = StudentBio.new {
                 student.set(student1)
                 dateOfBirth = "01/01/2000"
-            }.flush()
+            }
 
             assertEquals(bio1, student1.bio())
             assertEquals(bio1.student(), student1)
@@ -1457,14 +1457,14 @@ class EntityTests : R2dbcDatabaseTestsBase() {
                 board.set(
                     Board.new {
                         name = "Parent Board"
-                    }.initializedEntity
+                    }
                 )
                 category.set(
                     Category.new {
                         title = "Parent Category"
-                    }.initializedEntity
+                    }
                 )
-            }.flush()
+            }
 
             val category1 = parent1.category()
 
@@ -1474,11 +1474,11 @@ class EntityTests : R2dbcDatabaseTestsBase() {
                 category.set(
                     Category.new {
                         title = "Child Category"
-                    }.initializedEntity
+                    }
                 )
 
                 optCategory.set(category1)
-            }.flush()
+            }
 
             assertEquals("Parent Board", post.parent()?.board()?.name)
             assertEquals("Parent Category", post.parent()?.category()?.title)
@@ -1500,7 +1500,7 @@ class EntityTests : R2dbcDatabaseTestsBase() {
         withTables(Boards) {
             val board = boardEntityClass.new {
                 name = "Test Board"
-            }.flush()
+            }
 
             assertEquals("Test Board", board.name)
             assertTrue(
@@ -1526,7 +1526,7 @@ class EntityTests : R2dbcDatabaseTestsBase() {
         withTables(RequestsTable) {
             Request.new {
                 requestId = "123"
-            }.flush()
+            }
 
             val count = Request.all().count()
             assertEquals(1, count)
@@ -1597,7 +1597,7 @@ class EntityTests : R2dbcDatabaseTestsBase() {
 
             val creditCard = CreditCard.new {
                 number = "0000111122223333"
-            }.flush()
+            }
 
             assertEquals(10000uL, creditCard.spendingLimit)
         }
@@ -1609,7 +1609,7 @@ class EntityTests : R2dbcDatabaseTestsBase() {
             val newCard = CreditCard.new {
                 number = "0000111122223333"
                 spendingLimit = 10000uL
-            }.flush()
+            }
 
             val conditionalId = Case()
                 .When(CreditCards.spendingLimit less 500uL, CreditCards.id)
@@ -1660,17 +1660,17 @@ class EntityTests : R2dbcDatabaseTestsBase() {
             Dish.new {
                 name = "Kebbeh"
                 country.set(lebanon)
-            }.flush()
+            }
 
             Dish.new {
                 name = "Mjaddara"
                 country.set(lebanon)
-            }.flush()
+            }
 
             Dish.new {
                 name = "Fatteh"
                 country.set(lebanon)
-            }.flush()
+            }
 
             debug = true
 
@@ -1719,17 +1719,17 @@ class EntityTests : R2dbcDatabaseTestsBase() {
             val customer1 = Customer.new {
                 emailAddress = "customer1@testing.com"
                 name = "Customer1"
-            }.flush()
+            }
 
             val order1 = Order.new {
                 name = "Order1"
                 customer.set(customer1)
-            }.flush()
+            }
 
             val order2 = Order.new {
                 name = "Order2"
                 customer.set(customer1)
-            }.flush()
+            }
 
             Customer.all().with(Customer::orders)
 
@@ -1761,10 +1761,10 @@ class EntityTests : R2dbcDatabaseTestsBase() {
         withTables(TestTable) {
             val entityA = TestEntityA.new {
                 value = 1
-            }.flush()
+            }
             val entityB = TestEntityB.new {
                 value = 2
-            }.flush()
+            }
 
             entityA.value = 3
             entityB.value = 4
@@ -1776,9 +1776,9 @@ class EntityTests : R2dbcDatabaseTestsBase() {
     @Test
     fun testForIds() {
         withTables(Humans) {
-            val h1 = Human.newAndFlush { h = "h1" }
-            val h2 = Human.newAndFlush { h = "h2" }
-            Human.new { h = "h3" }.flush()
+            val h1 = Human.new { h = "h1" }
+            val h2 = Human.new { h = "h2" }
+            Human.new { h = "h3" }
 
             val byIds = Human.forIds(listOf(h1.id.value, h2.id.value)).toList()
             assertEquals(setOf("h1", "h2"), byIds.map { it.h }.toSet())

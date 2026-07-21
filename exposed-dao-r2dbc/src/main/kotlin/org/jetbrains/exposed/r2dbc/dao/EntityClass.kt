@@ -1,7 +1,9 @@
 package org.jetbrains.exposed.r2dbc.dao
 
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.singleOrNull
 import kotlinx.coroutines.flow.toList
@@ -46,26 +48,16 @@ abstract class EntityClass<ID : Any, out T : Entity<ID>>(
     private val entityCtor: (EntityID<ID>) -> T = entityCtor ?: { entityID -> entityPrimaryCtor.call(entityID) }
 
     /**
-     * Creates a new [Entity] instance with the fields that are set in the [init] block. The id will be automatically set.
+     * Creates a new [Entity] instance with the fields set in the [init] block, schedules its insert, flushes the
+     * entity cache, and returns the fully-hydrated entity with its auto-generated id and database-generated
+     * columns populated.
      *
-     * The returned [NewEntity] wraps the prototype until [NewEntity.flush] is invoked, at which point the
-     * auto-generated id becomes available. This wrapping is R2DBC-specific because the suspending insert
-     * cannot run synchronously inside the non-suspending `new` builder.
+     * Mirrors JDBC's `EntityClass.new` semantics: after this call the entity's [Entity.id] is immediately usable.
      *
-     * @param init The block where the entity's fields can be set.
-     * @return A [NewEntity] wrapping the entity that has been created.
-     */
-    open fun new(init: T.() -> Unit) = new(null, init)
-
-    /**
-     * Creates a new [Entity] instance with the fields that are set in the [init] block, schedules an insert, and
-     * immediately flushes the cache so the returned entity has its auto-generated id and database-generated columns
-     * populated. R2DBC-specific convenience that combines [new] and [NewEntity.flush] in one suspending call.
-     *
-     * @param init The suspending block where the entity's fields can be set.
+     * @param init Suspending block where the entity's fields can be set.
      * @return The created and flushed entity.
      */
-    open suspend fun newAndFlush(init: suspend T.() -> Unit): T = newAndFlush(null, init)
+    open suspend fun new(init: suspend T.() -> Unit): T = new(null, init)
 
     /** The [IdTable] that this [EntityClass] depends on when maintaining relations with managed [Entity] instances. */
     open val dependsOnTables: ColumnSet get() = table
@@ -74,66 +66,92 @@ abstract class EntityClass<ID : Any, out T : Entity<ID>>(
     open val dependsOnColumns: List<Column<out Any?>> get() = dependsOnTables.columns
 
     /**
-     * Creates a new [Entity] instance with the fields that are set in the [init] block and with the provided [id].
-     *
-     * The returned [NewEntity] wraps the prototype until [NewEntity.flush] is invoked, at which point the
-     * auto-generated id becomes available.
+     * Creates a new [Entity] instance with the fields set in the [init] block and with the provided [id],
+     * schedules its insert, flushes the entity cache, and returns the fully-hydrated entity.
      *
      * @param id The id of the entity. Set this to `null` if it should be automatically generated.
-     * @param init The block where the entity's fields can be set.
-     * @return A [NewEntity] wrapping the entity that has been created.
+     * @param init Suspending block where the entity's fields can be set.
+     * @return The created and flushed entity.
      */
-    open fun new(id: ID?, init: T.() -> Unit): NewEntity<ID, T> {
-        val entityId = if (id == null && table.id.defaultValueFun != null) {
-            table.id.defaultValueFun!!()
-        } else {
-            DaoEntityID(id, table)
-        }
-
-        val entityCache = warmCache()
-        val prototype: T = createInstance(entityId, null)
-        prototype.klass = this
-        prototype.db = TransactionManager.current().db
-        prototype._readValues = ResultRow.createAndFillDefaults(dependsOnColumns)
-        if (entityId._value != null) {
-            prototype.writeIdColumnValue(table, entityId)
-        }
-        try {
-            entityCache.addNotInitializedEntityToQueue(prototype)
-            prototype.init()
-        } finally {
-            entityCache.finishEntityInitialization(prototype)
-        }
-        val readValues = prototype._readValues!!
-        val writeValues = prototype.writeValues
-        table.columns.filter { col ->
-            col.defaultValueFun != null && col !in writeValues && readValues.hasValue(col)
-        }.forEach { col ->
-            @Suppress("UNCHECKED_CAST")
-            writeValues[col as Column<Any?>] = readValues[col]
-        }
-        @Suppress("UNCHECKED_CAST")
-        entityCache.scheduleInsert(this as EntityClass<ID, Entity<ID>>, prototype as Entity<ID>)
-        return NewEntity(prototype)
+    open suspend fun new(id: ID?, init: suspend T.() -> Unit): T {
+        val prototype = scheduleNew(id, init)
+        TransactionManager.current().entityCache.flush()
+        return prototype
     }
 
     /**
-     * Creates a new [Entity] instance with the fields that are set in the [init] block and with the provided [id],
-     * then immediately flushes the cache so the returned entity has its auto-generated id and database-generated
-     * columns populated. R2DBC-specific convenience that combines [new] and [NewEntity.flush] in one suspending call.
+     * Creates a new [Entity] instance with the fields set in the [init] block, schedules its insert into the
+     * entity cache **without** flushing, and returns a cold [Flow] that emits exactly the created entity.
+     * The pending inserts are flushed on the first collection of the returned flow (or on transaction commit
+     * if the flow is never collected).
+     *
+     * Intended for batching: scheduling several entities via [newDeferred] and then collecting them together
+     * results in a single flush covering all pending inserts.
+     *
+     * ```kotlin
+     * val users: List<User> = names
+     *     .map { name -> User.newDeferred { this.name = name } }
+     *     .merge()
+     *     .toList()
+     * ```
+     *
+     * @param init Block where the entity's fields can be set. Must be non-suspending, since scheduling is
+     *   performed synchronously.
+     * @return A cold [Flow] that emits the created entity on first collection.
+     */
+    open fun newDeferred(init: T.() -> Unit): Flow<T> = newDeferred(null, init)
+
+    /**
+     * Composite/explicit-id variant of [newDeferred].
      *
      * @param id The id of the entity. Set this to `null` if it should be automatically generated.
-     * @param init The suspending block where the entity's fields can be set.
-     * @return The created and flushed entity.
+     * @param init Block where the entity's fields can be set. Must be non-suspending.
+     * @return A cold [Flow] that emits the created entity on first collection.
      */
-    open suspend fun newAndFlush(id: ID?, init: suspend T.() -> Unit): T {
+    open fun newDeferred(id: ID?, init: T.() -> Unit): Flow<T> {
+        val prototype = scheduleNewSync(id, init)
+        return flow {
+            TransactionManager.current().entityCache.flush()
+            emit(prototype)
+        }
+    }
+
+    private suspend fun scheduleNew(id: ID?, init: suspend T.() -> Unit): T {
+        val prototype = createPrototype(id)
+        val entityCache = warmCache()
+        try {
+            entityCache.addNotInitializedEntityToQueue(prototype)
+            prototype.init()
+        } finally {
+            entityCache.finishEntityInitialization(prototype)
+        }
+        applyColumnDefaults(prototype)
+        @Suppress("UNCHECKED_CAST")
+        entityCache.scheduleInsert(this as EntityClass<ID, Entity<ID>>, prototype as Entity<ID>)
+        return prototype
+    }
+
+    private fun scheduleNewSync(id: ID?, init: T.() -> Unit): T {
+        val prototype = createPrototype(id)
+        val entityCache = warmCache()
+        try {
+            entityCache.addNotInitializedEntityToQueue(prototype)
+            prototype.init()
+        } finally {
+            entityCache.finishEntityInitialization(prototype)
+        }
+        applyColumnDefaults(prototype)
+        @Suppress("UNCHECKED_CAST")
+        entityCache.scheduleInsert(this as EntityClass<ID, Entity<ID>>, prototype as Entity<ID>)
+        return prototype
+    }
+
+    private fun createPrototype(id: ID?): T {
         val entityId = if (id == null && table.id.defaultValueFun != null) {
             table.id.defaultValueFun!!()
         } else {
             DaoEntityID(id, table)
         }
-
-        val entityCache = warmCache()
         val prototype: T = createInstance(entityId, null)
         prototype.klass = this
         prototype.db = TransactionManager.current().db
@@ -141,12 +159,10 @@ abstract class EntityClass<ID : Any, out T : Entity<ID>>(
         if (entityId._value != null) {
             prototype.writeIdColumnValue(table, entityId)
         }
-        try {
-            entityCache.addNotInitializedEntityToQueue(prototype)
-            prototype.init()
-        } finally {
-            entityCache.finishEntityInitialization(prototype)
-        }
+        return prototype
+    }
+
+    private fun applyColumnDefaults(prototype: T) {
         val readValues = prototype._readValues!!
         val writeValues = prototype.writeValues
         table.columns.filter { col ->
@@ -155,10 +171,6 @@ abstract class EntityClass<ID : Any, out T : Entity<ID>>(
             @Suppress("UNCHECKED_CAST")
             writeValues[col as Column<Any?>] = readValues[col]
         }
-        @Suppress("UNCHECKED_CAST")
-        entityCache.scheduleInsert(this as EntityClass<ID, Entity<ID>>, prototype as Entity<ID>)
-        entityCache.flush()
-        return prototype
     }
 
     /**

@@ -34,7 +34,7 @@ fun Application.tradeRoutes() {
                         this.quantity = dto.quantity
                         this.price = dto.price.toBigDecimal()
                         this.executedAt = Clock.System.now()
-                    }.flush()
+                    }
 
                     TradeDetailDTO(
                         id = trade.id.value,

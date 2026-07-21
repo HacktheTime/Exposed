@@ -63,8 +63,8 @@ class LongIdTableEntityTest : R2dbcDatabaseTestsBase() {
     @Test
     fun `create records`() {
         withTables(LongIdTables.Cities, LongIdTables.People) {
-            val mumbai = LongIdTables.City.new { name = "Mumbai" }.flush()
-            val pune = LongIdTables.City.new { name = "Pune" }.flush()
+            val mumbai = LongIdTables.City.new { name = "Mumbai" }
+            val pune = LongIdTables.City.new { name = "Pune" }
             LongIdTables.Person.new {
                 name = "David D'souza"
                 city.set(mumbai)
@@ -92,8 +92,8 @@ class LongIdTableEntityTest : R2dbcDatabaseTestsBase() {
     @Test
     fun `update and delete records`() {
         withTables(LongIdTables.Cities, LongIdTables.People) {
-            val mumbai = LongIdTables.City.new { name = "Mumbai" }.flush()
-            val pune = LongIdTables.City.new { name = "Pune" }.flush()
+            val mumbai = LongIdTables.City.new { name = "Mumbai" }
+            val pune = LongIdTables.City.new { name = "Pune" }
             LongIdTables.Person.new {
                 name = "David D'souza"
                 city.set(mumbai)
@@ -105,7 +105,7 @@ class LongIdTableEntityTest : R2dbcDatabaseTestsBase() {
             val tanu = LongIdTables.Person.new {
                 name = "Tanu Arora"
                 city.set(pune)
-            }.flush()
+            }
 
             tanu.delete()
             pune.delete()

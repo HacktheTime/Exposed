@@ -51,11 +51,11 @@ class MoneyDefaultsTest : R2dbcDatabaseTestsBase() {
     fun testDefaultsWithExplicit() {
         withTables(TableWithDBDefault) {
             val created = listOf(
-                DBDefault.new { field = "1" }.flush(),
+                DBDefault.new { field = "1" },
                 DBDefault.new {
                     field = "2"
                     t1 = Money.of(BigDecimal.TEN, "USD")
-                }.flush()
+                }
             )
             created.forEach {
                 DBDefault.removeFromCache(it)
@@ -70,8 +70,8 @@ class MoneyDefaultsTest : R2dbcDatabaseTestsBase() {
     fun testDefaultsInvokedOnlyOncePerEntity() {
         withTables(TableWithDBDefault) {
             TableWithDBDefault.cIndex = 0
-            val db1 = DBDefault.new { field = "1" }.flush()
-            val db2 = DBDefault.new { field = "2" }.flush()
+            val db1 = DBDefault.new { field = "1" }
+            val db2 = DBDefault.new { field = "2" }
             assertEquals(0, db1.clientDefault)
             assertEquals(1, db2.clientDefault)
             assertEquals(2, TableWithDBDefault.cIndex)
@@ -83,7 +83,7 @@ class MoneyDefaultsTest : R2dbcDatabaseTestsBase() {
     fun testNullableCompositeColumnType() {
         withTables(TableWithDBDefault) {
             TableWithDBDefault.cIndex = 0
-            val db1 = DBDefault.new { field = "1" }.flush()
+            val db1 = DBDefault.new { field = "1" }
             assertNull(db1.t2)
             val money = Money.of(BigDecimal.ONE, "USD")
             db1.t2 = money

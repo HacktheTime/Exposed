@@ -37,7 +37,7 @@ class VectorColumnTypeTests : R2dbcDatabaseTestsBase() {
 
                 val ve = VectorEntity.new {
                     embedding = floatArrayOf(0f, 1f, 0f, 0f, 0f)
-                }.flush()
+                }
 
                 val inserted = VectorEntity.all().single()
                 assertEquals(ve.embedding, inserted.embedding)

@@ -9,7 +9,6 @@ import org.jetbrains.exposed.r2dbc.dao.IntEntity
 import org.jetbrains.exposed.r2dbc.dao.IntEntityClass
 import org.jetbrains.exposed.r2dbc.dao.LongEntity
 import org.jetbrains.exposed.r2dbc.dao.LongEntityClass
-import org.jetbrains.exposed.r2dbc.dao.NewEntity
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.dao.id.IdTable
@@ -53,11 +52,11 @@ class `Table id not in Record Test issue 1341` : R2dbcDatabaseTestsBase() {
 
         companion object : EntityClass<Int, Accounts>(AccountsTable) {
 
-            suspend fun new(accountName: Pair<String, String>): NewEntity<Int, Accounts> {
+            suspend fun new(accountName: Pair<String, String>): Accounts {
                 val newName = Names.new {
                     first = accountName.first
                     second = accountName.second
-                }.flush()
+                }
 
                 return new {
                     this.name.set(newName)
@@ -69,7 +68,7 @@ class `Table id not in Record Test issue 1341` : R2dbcDatabaseTestsBase() {
     @Test
     fun testRegression() {
         withTables(NamesTable, AccountsTable) {
-            val account = Accounts.new("first" to "second").flush()
+            val account = Accounts.new("first" to "second")
             assertEquals("first", account.name().first)
             assertEquals("second", account.name().second)
         }
@@ -114,12 +113,12 @@ class `Text id loosed on insert issue 1379` : R2dbcDatabaseTestsBase() {
         withTables(runTests, Table1, Table2) {
             val obj1 = Obj1.new {
                 a = "hello world!"
-            }.flush()
+            }
 
             Obj2.new("test") {
                 a = "bye world!"
                 ref.set(obj1)
-            }.flush()
+            }
         }
     }
 }
@@ -137,7 +136,7 @@ class EntityCacheNotUpdatedOnCommitIssue1380 : R2dbcDatabaseTestsBase() {
 
     @Test fun testRegression() {
         withTables(TestTable) {
-            val entity1 = TestEntity.new { value = 1 }.flush()
+            val entity1 = TestEntity.new { value = 1 }
 
             assertNotNull(TestEntity.findById(entity1.id))
             TestEntity.findById(entity1.id)?.delete()

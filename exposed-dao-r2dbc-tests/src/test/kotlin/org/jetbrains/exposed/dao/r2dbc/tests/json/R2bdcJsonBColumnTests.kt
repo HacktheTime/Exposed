@@ -31,7 +31,7 @@ class R2bdcJsonBColumnTests : R2dbcDatabaseTestsBase() {
             val dataA = DataHolder(User("Admin", "Alpha"), 10, true, null)
             val newUser = dataEntity.new {
                 jsonBColumn = dataA
-            }.flush()
+            }
 
             assertEquals(dataA, dataEntity.findById(newUser.id)?.jsonBColumn)
 
@@ -43,7 +43,7 @@ class R2bdcJsonBColumnTests : R2dbcDatabaseTestsBase() {
             assertEquals(updatedUser, dataEntity.all().single().jsonBColumn)
 
             if (testDb !in TestDB.ALL_H2_V2) {
-                dataEntity.new { jsonBColumn = dataA }.flush()
+                dataEntity.new { jsonBColumn = dataA }
                 val loginCount = if (currentDialectTest is PostgreSQLDialect) {
                     JsonTestsData.JsonBTable.jsonBColumn.extract<Int>("logins").castTo(IntegerColumnType())
                 } else {
@@ -74,7 +74,7 @@ class R2bdcJsonBColumnTests : R2dbcDatabaseTestsBase() {
             entity = MyEntity.new {
                 name = "Test"
                 user = User("Pro", "Alpha")
-            }.flush()
+            }
         }
 
         // Should be able to read fields despite having no transaction

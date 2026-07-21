@@ -89,11 +89,11 @@ class EntityHookTest : R2dbcDatabaseTestsBase() {
             val (_, events, txId) = trackChanges {
                 val ru = EntityHookTestData.Country.new {
                     name = "RU"
-                }.flush()
+                }
                 val x = EntityHookTestData.City.new {
                     name = "St. Petersburg"
                     country.set(ru)
-                }.flush()
+                }
             }
 
             assertEquals(2, events.count())
@@ -111,11 +111,11 @@ class EntityHookTest : R2dbcDatabaseTestsBase() {
             val spbId = suspendTransaction {
                 val ru = EntityHookTestData.Country.new {
                     name = "RU"
-                }.flush()
+                }
                 val x = EntityHookTestData.City.new {
                     name = "St. Petersburg"
                     country.set(ru)
-                }.flush()
+                }
 
                 x.id
             }
@@ -138,11 +138,11 @@ class EntityHookTest : R2dbcDatabaseTestsBase() {
             val (_, events1, _) = trackChanges {
                 val ru = EntityHookTestData.Country.new {
                     name = "RU"
-                }.flush()
+                }
                 EntityHookTestData.City.new {
                     name = "St. Petersburg"
                     country.set(ru)
-                }.flush()
+                }
             }
 
             assertEquals(2, events1.count())
@@ -150,7 +150,7 @@ class EntityHookTest : R2dbcDatabaseTestsBase() {
             val (_, events2, txId) = trackChanges {
                 val de = EntityHookTestData.Country.new {
                     name = "DE"
-                }.flush()
+                }
                 val x = EntityHookTestData.City.all().single()
                 x.name = "Munich"
                 x.country.set(de)
@@ -171,22 +171,22 @@ class EntityHookTest : R2dbcDatabaseTestsBase() {
             suspendTransaction {
                 val ru = EntityHookTestData.Country.new {
                     name = "RU"
-                }.flush()
+                }
                 val de = EntityHookTestData.Country.new {
                     name = "DE"
-                }.flush()
+                }
                 EntityHookTestData.City.new {
                     name = "St. Petersburg"
                     country.set(ru)
-                }.flush()
+                }
                 EntityHookTestData.City.new {
                     name = "Munich"
                     country.set(de)
-                }.flush()
+                }
                 EntityHookTestData.User.new {
                     name = "John"
                     age = 30
-                }.flush()
+                }
             }
 
             val (_, events, txId) = trackChanges {
@@ -210,22 +210,22 @@ class EntityHookTest : R2dbcDatabaseTestsBase() {
             suspendTransaction {
                 val ru = EntityHookTestData.Country.new {
                     name = "RU"
-                }.flush()
+                }
                 val de = EntityHookTestData.Country.new {
                     name = "DE"
-                }.flush()
+                }
                 val spb = EntityHookTestData.City.new {
                     name = "St. Petersburg"
                     country.set(ru)
-                }.flush()
+                }
                 val muc = EntityHookTestData.City.new {
                     name = "Munich"
                     country.set(de)
-                }.flush()
+                }
                 val john = EntityHookTestData.User.new {
                     name = "John"
                     age = 30
-                }.flush()
+                }
 
                 john.cities = SizedCollection(listOf(muc))
                 flushCache()
@@ -252,22 +252,22 @@ class EntityHookTest : R2dbcDatabaseTestsBase() {
             suspendTransaction {
                 val ru = EntityHookTestData.Country.new {
                     name = "RU"
-                }.flush()
+                }
                 val de = EntityHookTestData.Country.new {
                     name = "DE"
-                }.flush()
+                }
                 val spb = EntityHookTestData.City.new {
                     name = "St. Petersburg"
                     country.set(ru)
-                }.flush()
+                }
                 val muc = EntityHookTestData.City.new {
                     name = "Munich"
                     country.set(de)
-                }.flush()
+                }
                 val john = EntityHookTestData.User.new {
                     name = "John"
                     age = 30
-                }.flush()
+                }
 
                 john.cities = SizedCollection(listOf(spb))
                 flushCache()
@@ -294,7 +294,7 @@ class EntityHookTest : R2dbcDatabaseTestsBase() {
                 EntityHookTestData.User.new {
                     name = "John"
                     age = 30
-                }.flush()
+                }
             }
 
             assertEquals(1, events.size)
@@ -322,7 +322,7 @@ class EntityHookTest : R2dbcDatabaseTestsBase() {
             val user = EntityHookTestData.User.new {
                 name = "1@test.local"
                 age = 30
-            }.flush()
+            }
             user.flush()
 
             EntityHook.subscribe {
@@ -352,7 +352,7 @@ class EntityHookTest : R2dbcDatabaseTestsBase() {
                 val user = EntityHookTestData.User.new {
                     name = "name 1"
                     age = 25
-                }.flush()
+                }
                 user.flush()
 
                 user.name = "name 2"

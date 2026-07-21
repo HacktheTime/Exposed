@@ -75,11 +75,11 @@ class EntityReferenceCacheTest : R2dbcDatabaseTestsBase() {
             suspendTransaction(db) {
                 y1 = EntityTestsData.YEntity.new {
                     this.x = true
-                }.flush()
+                }
                 b1 = EntityTestsData.BEntity.new {
                     this.b1 = true
                     this.y.set(y1)
-                }.flush()
+                }
             }
             assertFails { y1.b() }
             assertFails { b1.y() }
@@ -102,10 +102,10 @@ class EntityReferenceCacheTest : R2dbcDatabaseTestsBase() {
         var b1: EntityTestsData.BEntity by Delegates.notNull()
         executeOnH2(EntityTestsData.XTable, EntityTestsData.YTable) {
             suspendTransaction(db) {
-                y1 = EntityTestsData.YEntity.new {}.flush()
+                y1 = EntityTestsData.YEntity.new {}
                 b1 = EntityTestsData.BEntity.new {
                     this.y.set(y1)
-                }.flush()
+                }
             }
             // R2DBC: property access returns a `suspend () -> ...` accessor — only invocation
             // performs the DB lookup that must fail when there's no transaction.
@@ -129,8 +129,8 @@ class EntityReferenceCacheTest : R2dbcDatabaseTestsBase() {
         var b1: EntityTestsData.BEntity by Delegates.notNull()
         executeOnH2(EntityTestsData.XTable, EntityTestsData.YTable) {
             suspendTransaction(db) {
-                y1 = EntityTestsData.YEntity.new {}.flush()
-                b1 = EntityTestsData.BEntity.new {}.flush()
+                y1 = EntityTestsData.YEntity.new {}
+                b1 = EntityTestsData.BEntity.new {}
             }
 
             suspendTransaction(dbWithCache) {
@@ -156,13 +156,13 @@ class EntityReferenceCacheTest : R2dbcDatabaseTestsBase() {
             suspendTransaction(db) {
                 b1 = EntityTests.Board.new {
                     name = "test-board"
-                }.flush()
+                }
                 p1 = EntityTests.Post.new {
                     board.set(b1)
-                }.flush()
+                }
                 p2 = EntityTests.Post.new {
                     board.set(b1)
-                }.flush()
+                }
             }
             assertFails { b1.posts.toList() }
             assertFails { p1.board()?.id }
@@ -189,13 +189,13 @@ class EntityReferenceCacheTest : R2dbcDatabaseTestsBase() {
             suspendTransaction(db) {
                 b1 = EntityTests.Board.new {
                     name = "test-board"
-                }.flush()
+                }
                 p1 = EntityTests.Post.new {
                     board.set(b1)
-                }.flush()
+                }
                 p2 = EntityTests.Post.new {
                     board.set(b1)
-                }.flush()
+                }
             }
 
             assertFails { b1.posts.toList() }
@@ -226,13 +226,13 @@ class EntityReferenceCacheTest : R2dbcDatabaseTestsBase() {
             suspendTransaction(db) {
                 b1 = EntityTests.Board.new {
                     name = "test-board"
-                }.flush()
+                }
                 p1 = EntityTests.Post.new {
                     board.set(b1)
-                }.flush()
+                }
                 p2 = EntityTests.Post.new {
                     board.set(b1)
-                }.flush()
+                }
             }
             assertFails { b1.posts.toList() }
             assertFails { p1.board()?.id }
@@ -259,17 +259,17 @@ class EntityReferenceCacheTest : R2dbcDatabaseTestsBase() {
             suspendTransaction(dbWithCache) {
                 c1 = City.new {
                     name = "Seoul"
-                }.flush()
+                }
                 u1 = User.new {
                     name = "a"
                     city.set(c1)
                     age = 5
-                }.flush()
+                }
                 u2 = User.new {
                     name = "b"
                     city.set(c1)
                     age = 27
-                }.flush()
+                }
                 City.all().with(City::users).toList()
             }
             assertEqualCollections(c1.users.map { it.id }.toList(), u1.id, u2.id)
@@ -283,9 +283,9 @@ class EntityReferenceCacheTest : R2dbcDatabaseTestsBase() {
         var s2: VString by Delegates.notNull()
         executeOnH2(*ViaTestData.allTables) {
             suspendTransaction(db) {
-                n = VNumber.new { number = 10 }.flush()
-                s1 = VString.new { text = "aaa" }.flush()
-                s2 = VString.new { text = "bbb" }.flush()
+                n = VNumber.new { number = 10 }
+                s1 = VString.new { text = "aaa" }
+                s2 = VString.new { text = "bbb" }
                 n.connectedStrings = SizedCollection(listOf(s1, s2))
             }
 
@@ -307,9 +307,9 @@ class EntityReferenceCacheTest : R2dbcDatabaseTestsBase() {
         var s2: VString by Delegates.notNull()
         executeOnH2(*ViaTestData.allTables) {
             suspendTransaction(db) {
-                n = VNumber.new { number = 10 }.flush()
-                s1 = VString.new { text = "aaa" }.flush()
-                s2 = VString.new { text = "bbb" }.flush()
+                n = VNumber.new { number = 10 }
+                s1 = VString.new { text = "aaa" }
+                s2 = VString.new { text = "bbb" }
                 n.connectedStrings = SizedCollection(listOf(s1, s2))
             }
 
@@ -407,16 +407,16 @@ class EntityReferenceCacheTest : R2dbcDatabaseTestsBase() {
     @Test
     fun `dont flush indirectly related entities on insert`() {
         withTables(Customers, Orders, OrderItems, Addresses) {
-            val customer1 = Customer.new { name = "Test" }.flush()
+            val customer1 = Customer.new { name = "Test" }
             val order1 = Order.new {
                 customer.set(customer1)
                 ref = "Test"
-            }.flush()
+            }
 
             val orderItem1 = OrderItem.new {
                 order.set(order1)
                 sku = "Test"
-            }.flush()
+            }
 
             assertEqualCollections(listOf(order1), customer1.orders.toList())
             assertEqualCollections(emptyList(), customer1.addresses.toList())
@@ -430,7 +430,7 @@ class EntityReferenceCacheTest : R2dbcDatabaseTestsBase() {
             Address.new {
                 customer.set(customer1)
                 street = "Test"
-            }.flush()
+            }
 
             flushCache()
 
@@ -438,7 +438,7 @@ class EntityReferenceCacheTest : R2dbcDatabaseTestsBase() {
             assertNotNull(entityCache.getReferrers<Order>(customer1.id, Orders.customer))
             assertNotNull(entityCache.getReferrers<OrderItem>(order1.id, OrderItems.order))
 
-            val customer2 = Customer.new { name = "Test2" }.flush()
+            val customer2 = Customer.new { name = "Test2" }
 
             flushCache()
 
@@ -454,31 +454,31 @@ class EntityReferenceCacheTest : R2dbcDatabaseTestsBase() {
     @Test
     fun `dont flush indirectly related entities on delete`() {
         withTables(Customers, Orders, OrderItems, Addresses) {
-            val customer1 = Customer.new { name = "Test" }.flush()
+            val customer1 = Customer.new { name = "Test" }
             val order1 = Order.new {
                 customer.set(customer1)
                 ref = "Test"
-            }.flush()
+            }
 
             val order2 = Order.new {
                 customer.set(customer1)
                 ref = "Test2"
-            }.flush()
+            }
 
             OrderItem.new {
                 order.set(order1)
                 sku = "Test"
-            }.flush()
+            }
 
             val orderItem2 = OrderItem.new {
                 order.set(order2)
                 sku = "Test2"
-            }.flush()
+            }
 
             Address.new {
                 customer.set(customer1)
                 street = "Test"
-            }.flush()
+            }
 
             flushCache()
 
@@ -517,16 +517,16 @@ class EntityReferenceCacheTest : R2dbcDatabaseTestsBase() {
     @Test
     fun `dont flush indirectly related entities with inner table`() {
         withTables(Customers, Roles, CustomerRoles) {
-            val customer1 = Customer.new { name = "Test" }.flush()
-            val role1 = Role.new { name = "Test" }.flush()
+            val customer1 = Customer.new { name = "Test" }
+            val role1 = Role.new { name = "Test" }
             val customerRole1 = CustomerRole.new {
                 customer.set(customer1)
                 role.set(role1)
-            }.flush()
+            }
 
             flushCache()
             assertEqualCollections(listOf(customerRole1), customer1.customerRoles.toList())
-            val role2 = Role.new { name = "Test2" }.flush()
+            val role2 = Role.new { name = "Test2" }
 
             flushCache()
             assertNotNull(entityCache.getReferrers<CustomerRole>(customer1.id, CustomerRoles.customer))
@@ -534,7 +534,7 @@ class EntityReferenceCacheTest : R2dbcDatabaseTestsBase() {
             val customerRole2 = CustomerRole.new {
                 customer.set(customer1)
                 role.set(role2)
-            }.flush()
+            }
             flushCache()
 
             assertNull(entityCache.getReferrers<Address>(customer1.id, CustomerRoles.customer))

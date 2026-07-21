@@ -40,7 +40,7 @@ class ArrayColumnTypeTests : R2dbcDatabaseTestsBase() {
             val entity1 = ArrayTestDao.new {
                 numbers = numInput
                 doubles = null
-            }.flush()
+            }
             assertContentEquals(numInput, entity1.numbers)
             assertTrue(entity1.strings.isEmpty())
 

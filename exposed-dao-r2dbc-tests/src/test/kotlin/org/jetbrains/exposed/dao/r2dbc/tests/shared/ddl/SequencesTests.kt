@@ -41,7 +41,7 @@ class SequencesTests : R2dbcDatabaseTestsBase() {
             val testerEntity = suspendTransaction {
                 TesterEntity.new {
                     name = "test row"
-                }.flush()
+                }
             }
 
             assertEquals(1, testerEntity.index)

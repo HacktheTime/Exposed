@@ -29,7 +29,7 @@ fun Application.instrumentRoutes() {
                         ticker = dto.ticker
                         name = dto.name
                         type = dto.type
-                    }.flush()
+                    }
                     InstrumentDTO(instrument.id.value, instrument.ticker, instrument.name, instrument.type)
                 }
                 call.respond(HttpStatusCode.Created, result)
@@ -80,7 +80,7 @@ fun Application.instrumentRoutes() {
                         ?: return@suspendTransaction null
                     val tags = dto.tags.map { tagName ->
                         Tag.find { Tags.name eq tagName }.firstOrNull()
-                            ?: Tag.new { name = tagName }.flush()
+                            ?: Tag.new { name = tagName }
                     }
                     instrument.tags = SizedCollection(tags)
                     flushCache()

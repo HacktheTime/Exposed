@@ -193,7 +193,7 @@ class CompositeIdTableEntityTest : R2dbcDatabaseTestsBase() {
         withTables(Publishers) {
             val p1 = Publisher.new {
                 name = "Publisher A"
-            }.flush()
+            }
 
             val result1 = Publisher.all().single()
             assertEquals("Publisher A", result1.name)
@@ -267,7 +267,7 @@ class CompositeIdTableEntityTest : R2dbcDatabaseTestsBase() {
                 }
             ) {
                 name = "Publisher A"
-            }.flush()
+            }
             val found1 = Publisher.find { Publishers.pubId eq 578 }.single()
             assertEquals(p1.id, found1.id)
             assertEquals("Publisher A", found1.name)
@@ -280,7 +280,7 @@ class CompositeIdTableEntityTest : R2dbcDatabaseTestsBase() {
                 }
             ) {
                 name = "Publisher B"
-            }.flush()
+            }
             val found2 = Publisher.find { Publishers.isbn eq isbn }.single()
             assertEquals(p2.id, found2.id)
             val expectedNextVal1 = if (currentTestDB in TestDB.ALL_MYSQL_LIKE) 579 else 1
@@ -293,15 +293,15 @@ class CompositeIdTableEntityTest : R2dbcDatabaseTestsBase() {
         withTables(tables = allTables) {
             val publisherA = Publisher.new {
                 name = "Publisher A"
-            }.flush()
+            }
             val authorA = Author.new {
                 publisher.set(publisherA)
                 penName = "Author A"
-            }.flush()
+            }
             val bookA = Book.new {
                 title = "Book A"
                 author.set(authorA)
-            }.flush()
+            }
             val compositeID = CompositeID {
                 it[Reviews.rank] = 10L
             }
@@ -393,7 +393,7 @@ class CompositeIdTableEntityTest : R2dbcDatabaseTestsBase() {
             }
             val p2Id = Publisher.new(fullId) {
                 name = "Publisher B"
-            }.flush().id
+            }.id
             assertEquals(611, p2Id.value[Publishers.pubId].value)
             assertEquals(611, Publisher.findById(p2Id)?.id?.value?.get(Publishers.pubId)?.value)
         }
@@ -414,7 +414,7 @@ class CompositeIdTableEntityTest : R2dbcDatabaseTestsBase() {
 
             val id2: EntityID<CompositeID> = Publisher.new {
                 name = "Publisher B"
-            }.flush().id
+            }.id
 
             val p2 = Publisher.findById(id2)
             assertNotNull(p2)
@@ -434,7 +434,7 @@ class CompositeIdTableEntityTest : R2dbcDatabaseTestsBase() {
         withTables(Publishers) {
             val p1 = Publisher.new {
                 name = "Publisher A"
-            }.flush()
+            }
 
             assertEquals(p1.id, Publisher.find { Publishers.name like "% A" }.single().id)
 
@@ -453,7 +453,7 @@ class CompositeIdTableEntityTest : R2dbcDatabaseTestsBase() {
         withTables(Publishers) {
             val p1 = Publisher.new {
                 name = "Publisher A"
-            }.flush()
+            }
 
             p1.name = "Publisher B"
 
@@ -466,10 +466,10 @@ class CompositeIdTableEntityTest : R2dbcDatabaseTestsBase() {
         withTables(Publishers) {
             val p1 = Publisher.new {
                 name = "Publisher A"
-            }.flush()
+            }
             val p2 = Publisher.new {
                 name = "Publisher B"
-            }.flush()
+            }
 
             assertEquals(2, Publisher.all().count())
 
@@ -570,19 +570,19 @@ class CompositeIdTableEntityTest : R2dbcDatabaseTestsBase() {
         withTables(tables = allTables) {
             val publisherA = Publisher.new {
                 name = "Publisher A"
-            }.flush()
+            }
             val authorA = Author.new {
                 publisher.set(publisherA)
                 penName = "Author A"
-            }.flush()
+            }
             val authorB = Author.new {
                 publisher.set(publisherA)
                 penName = "Author B"
-            }.flush()
+            }
             val bookA = Book.new {
                 title = "Book A"
                 author.set(authorB)
-            }.flush()
+            }
             Book.new {
                 title = "Book B"
                 author.set(authorB)
@@ -594,13 +594,13 @@ class CompositeIdTableEntityTest : R2dbcDatabaseTestsBase() {
             }
             val reviewA: Review = Review.new(reviewIdValue) {
                 book.set(bookA)
-            }.flush()
+            }
             val officeAIdValue = CompositeID {
                 it[Offices.zipCode] = "1A2 3B4"
                 it[Offices.name] = "Office A"
                 it[Offices.areaCode] = 789
             }
-            val officeA = Office.new(officeAIdValue) {}.flush()
+            val officeA = Office.new(officeAIdValue) {}
             val officeBIdValue = CompositeID {
                 it[Offices.zipCode] = "5C6 7D8"
                 it[Offices.name] = "Office B"
@@ -608,7 +608,7 @@ class CompositeIdTableEntityTest : R2dbcDatabaseTestsBase() {
             }
             val officeB = Office.new(officeBIdValue) {
                 publisher.set(publisherA)
-            }.flush()
+            }
 
             // child entity references — R2DBC accessors are suspend lambdas, so each `.publisher`
             // / `.author` / `.book` etc. needs `()` to actually fetch the related entity.
@@ -661,11 +661,11 @@ class CompositeIdTableEntityTest : R2dbcDatabaseTestsBase() {
         withTables(tables = allTables) {
             val publisherA = Publisher.new {
                 name = "Publisher A"
-            }.flush()
+            }
             val authorA = Author.new {
                 publisher.set(publisherA)
                 penName = "Author A"
-            }.flush()
+            }
             Author.new {
                 publisher.set(publisherA)
                 penName = "Author B"
@@ -675,7 +675,7 @@ class CompositeIdTableEntityTest : R2dbcDatabaseTestsBase() {
                 it[Offices.name] = "Office A"
                 it[Offices.areaCode] = 789
             }
-            val officeA = Office.new(officeAIdValue) {}.flush()
+            val officeA = Office.new(officeAIdValue) {}
             val officeBIdValue = CompositeID {
                 it[Offices.zipCode] = "5C6 7D8"
                 it[Offices.name] = "Office B"
@@ -683,7 +683,7 @@ class CompositeIdTableEntityTest : R2dbcDatabaseTestsBase() {
             }
             val officeB = Office.new(officeBIdValue) {
                 publisher.set(publisherA)
-            }.flush()
+            }
 
             commit()
 
@@ -716,7 +716,7 @@ class CompositeIdTableEntityTest : R2dbcDatabaseTestsBase() {
         withTables(tables = allTables) {
             val publisherA = Publisher.new {
                 name = "Publisher A"
-            }.flush()
+            }
             val officeAIdValue = CompositeID {
                 it[Offices.zipCode] = "1A2 3B4"
                 it[Offices.name] = "Office A"
@@ -730,17 +730,17 @@ class CompositeIdTableEntityTest : R2dbcDatabaseTestsBase() {
             }
             val officeB = Office.new(officeBIdValue) {
                 publisher.set(publisherA)
-            }.flush()
+            }
             val bookA = Book.new {
                 title = "Book A"
-            }.flush()
+            }
             val reviewIdValue = CompositeID {
                 it[Reviews.content] = "Not bad"
                 it[Reviews.rank] = 12345
             }
             val reviewA: Review = Review.new(reviewIdValue) {
                 book.set(bookA)
-            }.flush()
+            }
 
             commit()
 
@@ -769,15 +769,15 @@ class CompositeIdTableEntityTest : R2dbcDatabaseTestsBase() {
         withTables(tables = allTables) {
             val publisherA = Publisher.new {
                 name = "Publisher A"
-            }.flush()
+            }
             val authorA = Author.new {
                 publisher.set(publisherA)
                 penName = "Author A"
-            }.flush()
+            }
             val authorB = Author.new {
                 publisher.set(publisherA)
                 penName = "Author B"
-            }.flush()
+            }
             val officeAIdValue = CompositeID {
                 it[Offices.zipCode] = "1A2 3B4"
                 it[Offices.name] = "Office A"
@@ -791,7 +791,7 @@ class CompositeIdTableEntityTest : R2dbcDatabaseTestsBase() {
             }
             val officeB = Office.new(officeBIdValue) {
                 publisher.set(publisherA)
-            }.flush()
+            }
 
             commit()
 
