@@ -5,7 +5,7 @@ import org.gradle.api.Project
 import org.gradle.api.provider.Property
 import org.gradle.api.publish.maven.MavenPom
 
-infix fun <T> Property<T>.by(value: T) {
+infix fun <T : Any> Property<T>.by(value: T) {
     set(value)
 }
 
