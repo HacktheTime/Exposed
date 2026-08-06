@@ -3,11 +3,18 @@ package org.jetbrains.exposed.v1.dao.r2dbc.relationships
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.EntityIDColumnType
 import org.jetbrains.exposed.v1.core.Expression
+import org.jetbrains.exposed.v1.core.IColumnType
+import org.jetbrains.exposed.v1.core.Op
+import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.dao.id.CompositeIdTable
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.neq
+import org.jetbrains.exposed.v1.core.notInList
 import org.jetbrains.exposed.v1.dao.r2dbc.Entity
 import org.jetbrains.exposed.v1.dao.r2dbc.EntityClass
 import org.jetbrains.exposed.v1.dao.r2dbc.ExperimentalR2dbcDaoApi
@@ -162,3 +169,108 @@ private suspend fun <ChildID : Any, Child : Entity<ChildID>, REF> doQuery(
         result
     }
 }
+
+/**
+ * A foreign key reference column that carries the [entityClass] of the parent entity it points to.
+ * Extends [Column] as a higher-type so its property delegate can resolve the referenced entity directly.
+ */
+open class ReferencedColumn<ID : Any, EntityType : Entity<ID>, EntityClassType : EntityClass<ID, EntityType>>(
+    table: Table,
+    name: String,
+    columnType: IColumnType<EntityID<ID>>,
+    val entityClass: EntityClassType
+) : Column<EntityID<ID>>(table, name, columnType)
+
+/**
+ * Nullable variant of [ReferencedColumn] produced by `reference(...).nullable()`. Keeps the same schema (the
+ * underlying [columnType] is marked nullable) but its property delegate resolves to an [OptionalAccessor], so
+ * reading the parent yields [null] when unset and writing `null` clears the link.
+ */
+class OptionalReferencedColumn<ID : Any, EntityType : Entity<ID>, EntityClassType : EntityClass<ID, EntityType>>(
+    table: Table,
+    name: String,
+    columnType: IColumnType<EntityID<ID>>,
+    entityClass: EntityClassType
+) : ReferencedColumn<ID, EntityType, EntityClassType>(table, name, columnType, entityClass)
+
+/**
+ * Marks this [ReferencedColumn] as nullable while keeping its reference-resolving type (and [entityClass]),
+ * so it can still be used as an entity reference property delegate — unlike the plain [Column.nullable], which
+ * would degrade it to a regular nullable [Column] and lose the parent-entity resolution.
+ *
+ * This is only available in a `Table` DDL-building scope (like other column modifiers), because the referenced
+ * table must receive the new nullable column instance.
+ */
+context(table: Table)
+fun <ID : Any, EntityType : Entity<ID>, EntityClassType : EntityClass<ID, EntityType>> ReferencedColumn<ID, EntityType, EntityClassType>.nullable(): OptionalReferencedColumn<ID, EntityType, EntityClassType> {
+    val newColumn = OptionalReferencedColumn(table, name, columnType, entityClass)
+    newColumn.foreignKey = foreignKey
+    newColumn.defaultValueFun = defaultValueFun
+    newColumn.columnType.nullable = true
+    return table.replaceColumn(this, newColumn)
+}
+
+
+/**
+ * Creates a foreign key reference column whose value is stored as an [EntityID] of [refColumn] and which,
+ * when used as an entity property delegate, resolves the referenced parent [ref] entity lazily — the
+ * R2DBC counterpart of combining a DSL `reference` with `referencedOn`.
+ *
+ * @param name Name of the reference column.
+ * @param refColumn The column from the parent table which will be referenced.
+ * @param ref The [EntityClass] of the parent entity.
+ * @param onDelete Optional [ReferenceOption] for a deleted parent row.
+ * @param onUpdate Optional [ReferenceOption] for a changed referenced column value.
+ * @param fkName Optional foreign key constraint name.
+ */
+context(table: Table)
+fun <REF : Any, EntityType : Entity<REF>, EntityClassType : EntityClass<REF, EntityType>> reference(
+    name: String,
+    refColumn: Column<EntityID<REF>>,
+    ref: EntityClassType,
+    onDelete: ReferenceOption? = null,
+    onUpdate: ReferenceOption? = null,
+    fkName: String? = null
+): ReferencedColumn<REF, EntityType, EntityClassType> {
+    val innerIdColumn = (refColumn.columnType as EntityIDColumnType<REF>).idColumn
+    val idColumn = table.entityId(name, innerIdColumn)
+    val referencedColumn = ReferencedColumn<REF, EntityType, EntityClassType>(
+        table = table,
+        name = name,
+        columnType = idColumn.columnType,
+        entityClass = ref
+    ).also { column ->
+        with(table) { column.references(refColumn, onDelete, onUpdate, fkName) }
+        table.replaceColumn(idColumn, column)
+    }
+    return referencedColumn
+}
+
+/**
+ * Checks if this referenced column points to the same row as [entity] (compares against `entity.id`).
+ * Applies both to nullable and non-nullable reference columns and works inside a query builder
+ * ([org.jetbrains.exposed.v1.core.SqlExpressionBuilder]) scope, e.g. `EntityClass.find { Owners.bb eq someOwner }`.
+ */
+infix fun <ID : Any, EntityType : Entity<ID>, EntityClassType : EntityClass<ID, EntityType>> ReferencedColumn<ID, EntityType, EntityClassType>.eq(entity: EntityType): Op<Boolean> =
+    this eq entity.id
+
+/**
+ * Checks if this referenced column does not point to the given [entity].
+ */
+infix fun <ID : Any, EntityType : Entity<ID>, EntityClassType : EntityClass<ID, EntityType>> ReferencedColumn<ID, EntityType, EntityClassType>.neq(
+    entity: EntityType
+): Op<Boolean> = this neq entity.id
+
+/**
+ * Checks if this referenced column points to any of the given [entities].
+ */
+infix fun <ID : Any, EntityType : Entity<ID>, EntityClassType : EntityClass<ID, EntityType>> ReferencedColumn<ID, EntityType, EntityClassType>.inList(
+    entities: Iterable<EntityType>
+): Op<Boolean> = this inList entities.map { it.id }
+
+/**
+ * Checks if this referenced column points to none of the given [entities].
+ */
+infix fun <ID : Any, EntityType : Entity<ID>, EntityClassType : EntityClass<ID, EntityType>> ReferencedColumn<ID, EntityType, EntityClassType>.notInList(
+    entities: Iterable<EntityType>
+): Op<Boolean> = this notInList entities.map { it.id }

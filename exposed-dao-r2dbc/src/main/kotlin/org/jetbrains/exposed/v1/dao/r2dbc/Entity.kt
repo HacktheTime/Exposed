@@ -1,23 +1,20 @@
 package org.jetbrains.exposed.v1.dao.r2dbc
 
-import org.jetbrains.exposed.v1.core.AutoIncColumnType
-import org.jetbrains.exposed.v1.core.Column
-import org.jetbrains.exposed.v1.core.CompositeColumn
-import org.jetbrains.exposed.v1.core.EntityIDColumnType
-import org.jetbrains.exposed.v1.core.ResultRow
-import org.jetbrains.exposed.v1.core.Table
+import org.jetbrains.exposed.v1.core.*
 import org.jetbrains.exposed.v1.core.dao.id.CompositeID
 import org.jetbrains.exposed.v1.core.dao.id.CompositeIdTable
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.dao.id.IdTable
-import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.dao.r2dbc.exceptions.EntityNotFoundException
+import org.jetbrains.exposed.v1.dao.r2dbc.relationships.Accessor
 import org.jetbrains.exposed.v1.dao.r2dbc.relationships.InnerTableLink
+import org.jetbrains.exposed.v1.dao.r2dbc.relationships.OptionalAccessor
+import org.jetbrains.exposed.v1.dao.r2dbc.relationships.OptionalReferencedColumn
+import org.jetbrains.exposed.v1.dao.r2dbc.relationships.ReferencedColumn
 import org.jetbrains.exposed.v1.r2dbc.R2dbcDatabase
 import org.jetbrains.exposed.v1.r2dbc.deleteWhere
 import org.jetbrains.exposed.v1.r2dbc.transactions.TransactionManager
 import org.jetbrains.exposed.v1.r2dbc.update
-import kotlin.collections.get
 import kotlin.properties.Delegates
 import kotlin.reflect.KProperty
 
@@ -56,6 +53,24 @@ open class Entity<ID : Any>(val id: EntityID<ID>) {
     private val referenceCache by lazy { HashMap<Column<*>, Any?>() }
 
     operator fun <T> Column<T>.getValue(o: Entity<ID>, desc: KProperty<*>): T = lookup()
+    /**
+     * Property delegate for a foreign-key reference column created via [reference]. Resolves the referenced
+     * parent entity directly (mirrors `referencedOn`) by returning an [Accessor] bound to this entity, so the
+     * parent is lazily looked up through [ref]'s factory on invocation.
+     */
+    operator fun <REF : Any, EntityType : Entity<REF>, EntityClassType : EntityClass<REF, EntityType>> ReferencedColumn<REF, EntityType, EntityClassType>.getValue(o: Entity<ID>, desc: KProperty<*>): Accessor<REF, EntityType, EntityID<REF>> {
+        return Accessor(this, this.entityClass, o, references = null)
+    }
+
+    /**
+     * Property delegate for a nullable foreign-key reference column created via `reference(...).nullable()`.
+     * Resolves the referenced parent entity lazily through an [OptionalAccessor], so reading returns the parent
+     * or [null] and writing accepts [null] to clear the link.
+     */
+    operator fun <REF : Any, EntityType : Entity<REF>, EntityClassType : EntityClass<REF, EntityType>> OptionalReferencedColumn<REF, EntityType, EntityClassType>.getValue(o: Entity<ID>, desc: KProperty<*>): OptionalAccessor<REF, EntityType, EntityID<REF>> {
+        @Suppress("UNCHECKED_CAST")
+        return OptionalAccessor(this as Column<EntityID<REF>?>, this.entityClass, o, references = null)
+    }
 
     /**
      * Returns the value assigned to this column mapping.
