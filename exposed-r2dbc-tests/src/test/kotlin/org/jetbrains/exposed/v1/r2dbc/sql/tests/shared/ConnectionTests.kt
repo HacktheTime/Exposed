@@ -3,6 +3,9 @@ package org.jetbrains.exposed.v1.r2dbc.sql.tests.shared
 import io.r2dbc.h2.H2ConnectionConfiguration
 import io.r2dbc.h2.H2ConnectionFactory
 import io.r2dbc.h2.H2ConnectionOption
+import io.r2dbc.spi.Connection
+import io.r2dbc.spi.ConnectionFactory
+import io.r2dbc.spi.ConnectionFactoryMetadata
 import io.r2dbc.spi.ConnectionFactoryOptions
 import io.r2dbc.spi.Option
 import kotlinx.coroutines.Dispatchers
@@ -38,7 +41,10 @@ import org.jetbrains.exposed.v1.r2dbc.transactions.suspendTransaction
 import org.junit.jupiter.api.Assumptions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
+import org.reactivestreams.Publisher
+import reactor.core.publisher.Mono
 import java.sql.Types
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -46,6 +52,15 @@ import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.milliseconds
 
 class ConnectionTests : R2dbcDatabaseTestsBase() {
+
+    private class CountingConnectionFactory(private val delegate: ConnectionFactory) : ConnectionFactory {
+        val connectionsCreated = AtomicInteger()
+
+        override fun create(): Publisher<out Connection?> = Mono.from(delegate.create())
+            .doOnNext { connectionsCreated.incrementAndGet() }
+
+        override fun getMetadata(): ConnectionFactoryMetadata = delegate.metadata
+    }
 
     object People : LongIdTable() {
         val firstName = varchar("firstname", 80).nullable()
@@ -225,6 +240,31 @@ class ConnectionTests : R2dbcDatabaseTestsBase() {
         Assumptions.assumeTrue(TestDB.H2_V2_MYSQL in TestDB.enabledDialects())
 
         testConnectMethod(dbConnectionFactory)
+    }
+
+    @Test
+    fun testVersionIsCachedWhenTransactionConnectionIsOpened() = runTest {
+        Assumptions.assumeTrue(TestDB.H2_V2 in TestDB.enabledDialects())
+
+        val options = H2ConnectionConfiguration.builder()
+            .inMemory("version-cache")
+            .property(H2ConnectionOption.DB_CLOSE_DELAY, "-1")
+            .build()
+        val connectionFactory = CountingConnectionFactory(H2ConnectionFactory(options))
+        val database = R2dbcDatabase.connect(
+            connectionFactory = connectionFactory,
+            databaseConfig = R2dbcDatabaseConfig { explicitDialect = H2Dialect() }
+        )
+
+        suspendTransaction(database) {
+            exec("SELECT 1")
+        }
+
+        assertEquals(1, connectionFactory.connectionsCreated.get())
+        suspendTransaction(database) {
+            database.version
+        }
+        assertEquals(1, connectionFactory.connectionsCreated.get())
     }
 
     private suspend fun testConnectMethod(db: R2dbcDatabase) {
