@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.toList
 import org.jetbrains.exposed.v1.core.Case
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.ReferenceOption
+import org.jetbrains.exposed.v1.core.stringLiteral
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.StdOutSqlLogger
 import org.jetbrains.exposed.v1.core.Table
@@ -127,6 +128,15 @@ object EntityTestsData {
         val bOpt by BEntity optionalBackReferencedOn XTable.y1
 
         companion object : EntityClass<String, YEntity>(YTable)
+    }
+
+    object DefaultExprTable : IntIdTable("t_default_expr_lookup") {
+        val label = varchar("label", 50).defaultExpression(stringLiteral("default_val"))
+    }
+
+    class DefaultExprEntity(id: EntityID<Int>) : Entity<Int>(id) {
+        var label by DefaultExprTable.label
+        companion object : EntityClass<Int, DefaultExprEntity>(DefaultExprTable)
     }
 }
 
@@ -1830,7 +1840,7 @@ class EntityTests : R2dbcDatabaseTestsBase() {
     }
 
     @Test
-    fun testForIds() {
+    fun testForIdsReturnsCorrectSubset() {
         withTables(Humans) {
             val h1 = Human.newSuspend { h = "h1" }
             val h2 = Human.newSuspend { h = "h2" }
@@ -1838,6 +1848,77 @@ class EntityTests : R2dbcDatabaseTestsBase() {
 
             val byIds = Human.forIds(listOf(h1.id.value, h2.id.value)).toList()
             assertEquals(setOf("h1", "h2"), byIds.map { it.h }.toSet())
+        }
+    }
+
+    @Test
+    fun testNewSuspendInsertsUserSetValuesIntoDatabase() {
+        withTables(Items) {
+            val item = Item.newSuspend {
+                name = "Widget"
+                price = 9.99
+            }
+
+            val row = Items.selectAll().where { Items.id eq item.id }.single()
+            assertEquals("Widget", row[Items.name])
+            assertEquals(9.99, row[Items.price])
+        }
+    }
+
+    @Test
+    fun testFlushAndCommitEntityWithNullOptionalReference() {
+        withTables(EntityTestsData.YTable, EntityTestsData.XTable) {
+            // Create entity without setting the optional reference (stays null)
+            val b = EntityTestsData.BEntity.newSuspend { }
+            // Flush stages the null value for y1
+            b.flush()
+            // commit() triggers afterCommit -> promoteUncommittedState -> updateByCommittedValues
+            // which previously threw NPE on "value as Any" when the optional reference value was null
+            commit()
+
+            assertEquals(true, b.b1)
+            assertEquals(false, b.b2)
+            assertNull(b.y())
+        }
+    }
+
+    @Test
+    fun testSetOptionalReferenceToNullThenCommit() {
+        withTables(EntityTestsData.YTable, EntityTestsData.XTable) {
+            val y = EntityTestsData.YEntity.newSuspend { x = true }.also { it.flush()}
+
+            val b = EntityTestsData.BEntity.newSuspend { }.also { it.flush() }
+
+            // Set the optional reference, then clear it
+            b.y.set(y)
+            b.y.set(null)
+            commit()
+
+            assertNull(b.y())
+        }
+    }
+
+    @Test
+    fun testLookupForColumnWithDefaultExpressionAfterFlush() {
+        withTables(EntityTestsData.DefaultExprTable) {
+            // 1. newSuspend does NOT set Kotlin-level default for defaultExpression columns
+            val entity = EntityTestsData.DefaultExprEntity.newSuspend {
+                // label intentionally omitted
+            }
+
+            // Before flush, label has no DB value yet — only the prototype's NotInitializedValue
+            assertNull(entity._readValues?.getOrNull(EntityTestsData.DefaultExprTable.label))
+
+            // 2. Flush sends INSERT to DB; DB supplies the default value.
+            //    After flush, staged row holds the DB value but _readValues still holds
+            //    the prototype's NotInitializedValue.
+            entity.flush()
+
+            // 3. Access the column via lookup — this is what triggers the bug
+            //    (before the fix, lookup() calls readValues[this] which throws
+            //    IllegalStateException: ... is not initialized yet)
+            val value = entity.label
+            assertEquals("default_val", value)
         }
     }
 }
