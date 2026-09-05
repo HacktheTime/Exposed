@@ -1160,7 +1160,7 @@ open class Table(name: String = "") : ColumnSet(), DdlAware {
         cloneWithAutoInc(sequence).also { replaceColumn(this, it) }
 
     /** Sets the default value for this column in the database side. */
-    fun <T> Column<T>.default(defaultValue: T): Column<T> = apply {
+    fun <C : Column<T>, T> C.default(defaultValue: T): C = apply {
         dbDefaultValue = asLiteral(defaultValue)
         defaultValueFun = { defaultValue }
     }
@@ -1175,13 +1175,13 @@ open class Table(name: String = "") : ColumnSet(), DdlAware {
     }
 
     /** Sets the default value for this column in the database side. */
-    fun <T> Column<T>.defaultExpression(defaultValue: Expression<T>): Column<T> = apply {
+    fun <C : Column<T>, T> C.defaultExpression(defaultValue: Expression<T>): C = apply {
         dbDefaultValue = defaultValue
         defaultValueFun = null
     }
 
     /** Sets the default value for this column in the client side. */
-    fun <T> Column<T>.clientDefault(defaultValue: () -> T): Column<T> = apply {
+    fun <C : Column<T>, T> C.clientDefault(defaultValue: () -> T): C = apply {
         dbDefaultValue = null
         defaultValueFun = defaultValue
     }
@@ -1193,7 +1193,7 @@ open class Table(name: String = "") : ColumnSet(), DdlAware {
      * The value for the column can be set by creating a TRIGGER or with a DEFAULT clause or
      * by using GENERATED ALWAYS AS via [Column.withDefinition], for example.
      */
-    fun <T> Column<T>.databaseGenerated(): Column<T> = apply {
+    fun <C : Column<T>, T> C.databaseGenerated(): C = apply {
         isDatabaseGenerated = true
     }
 
@@ -1466,6 +1466,7 @@ open class Table(name: String = "") : ColumnSet(), DdlAware {
     // Miscellaneous
 
     /** Marks this column as nullable. */
+    @LowPriorityInOverloadResolution
     fun <T : Any> Column<T>.nullable(): Column<T?> {
         val newColumn = Column<T?>(table, name, columnType)
         newColumn.foreignKey = foreignKey
@@ -1494,7 +1495,7 @@ open class Table(name: String = "") : ColumnSet(), DdlAware {
      * but before any column constraint definitions. If multiple definition arguments are passed, they
      * will be joined as string representations separated by a single space character.
      */
-    fun <T> Column<T>.withDefinition(vararg definition: Any): Column<T> = apply {
+    fun <C : Column<T>, T> C.withDefinition(vararg definition: Any): C = apply {
         extraDefinitions.addAll(definition)
     }
 
@@ -1509,7 +1510,7 @@ open class Table(name: String = "") : ColumnSet(), DdlAware {
      * @param text The comment text to add to the column
      * @return This column for method chaining
      */
-    fun <T> Column<T>.comment(text: String): Column<T> = apply {
+    fun <C : Column<T>, T> C.comment(text: String): C = apply {
         columnComment = text
     }
 
@@ -1717,7 +1718,7 @@ open class Table(name: String = "") : ColumnSet(), DdlAware {
      * @param customIndexName Name of the index.
      * @param isUnique Whether the index is unique or not.
      */
-    fun <T> Column<T>.index(customIndexName: String? = null, isUnique: Boolean = false): Column<T> =
+    fun <C : Column<T>, T> C.index(customIndexName: String? = null, isUnique: Boolean = false): C =
         apply { table.index(customIndexName, isUnique, this) }
 
     /**
@@ -1725,7 +1726,7 @@ open class Table(name: String = "") : ColumnSet(), DdlAware {
      *
      * @param customIndexName Name of the index.
      */
-    fun <T> Column<T>.uniqueIndex(customIndexName: String? = null): Column<T> =
+    fun <C : Column<T>, T> C.uniqueIndex(customIndexName: String? = null): C =
         index(customIndexName, true)
 
     /**
@@ -1811,7 +1812,7 @@ open class Table(name: String = "") : ColumnSet(), DdlAware {
      * the database engine decides the default name.
      * @param op The expression against which the newly inserted values will be compared.
      */
-    fun <T> Column<T>.check(name: String = "", op: (Column<T>) -> Op<Boolean>): Column<T> = apply {
+    fun <C : Column<T>, T> C.check(name: String = "", op: (Column<T>) -> Op<Boolean>): C = apply {
         if (name.isEmpty() || table.checkConstraints.none { it.first.equals(name, true) }) {
             table.checkConstraints.add(name to op(this))
         } else {
@@ -1853,7 +1854,7 @@ open class Table(name: String = "") : ColumnSet(), DdlAware {
 
     private fun <T> IColumnType<T>.cloneAsBaseType(): IColumnType<T> = ((this as? AutoIncColumnType)?.delegate ?: this).clone()
 
-    private fun <T> Column<T>.cloneWithAutoInc(idSeqName: String?): Column<T> = when (columnType) {
+    private fun <C : Column<T>, T> C.cloneWithAutoInc(idSeqName: String?): Column<T> = when (val columnType = columnType) {
         is AutoIncColumnType -> this
         is ColumnType -> {
             val fallbackSequenceName = fallbackSequenceName(tableName = tableName, columnName = name)
@@ -1865,7 +1866,7 @@ open class Table(name: String = "") : ColumnSet(), DdlAware {
         else -> error("Unsupported column type for auto-increment $columnType")
     }
 
-    private fun <T> Column<T>.cloneWithAutoInc(sequence: Sequence): Column<T> = when (columnType) {
+    private fun <C : Column<T>, T> C.cloneWithAutoInc(sequence: Sequence): Column<T> = when (val columnType = columnType) {
         is AutoIncColumnType -> this
         is ColumnType -> this.withColumnType(AutoIncColumnType(columnType, sequence))
         else -> error("Unsupported column type for auto-increment $columnType")
@@ -2242,4 +2243,4 @@ internal fun fallbackSequenceName(tableName: String, columnName: String): String
     return "$q${tableName.replace("\"", "")}_${columnName}_seq$q"
 }
 
-private fun <T> Column<T>.unquotedName() = name.trim('\"', '\'', '`')
+private fun <C : Column<T>, T> C.unquotedName() = name.trim('\"', '\'', '`')

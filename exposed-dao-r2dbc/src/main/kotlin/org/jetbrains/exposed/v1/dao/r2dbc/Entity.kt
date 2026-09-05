@@ -425,4 +425,23 @@ open class Entity<ID : Any>(val id: EntityID<ID>) {
             _sourceColumn = sourceColumn,
             _targetColumn = targetColumn
         )
+
+    /**
+     * Property delegate for a foreign-key reference column created via [reference]. Resolves the referenced
+     * parent entity directly (mirrors `referencedOn`) by returning an [Accessor] bound to this entity, so the
+     * parent is lazily looked up through [ref]'s factory on invocation.
+     */
+    operator fun <REF : Any, EntityType : Entity<REF>, EntityClassType : EntityClass<REF, EntityType>> ReferencedColumn<REF, EntityType, EntityClassType>.getValue(o: Entity<ID>, desc: KProperty<*>): Accessor<REF, EntityType, EntityID<REF>> {
+        return Accessor(this, this.entityClass, o, references = null)
+    }
+
+    /**
+     * Property delegate for a nullable foreign-key reference column created via `reference(...).nullable()`.
+     * Resolves the referenced parent entity lazily through an [OptionalAccessor], so reading returns the parent
+     * or [null] and writing accepts [null] to clear the link.
+     */
+    operator fun <REF : Any, EntityType : Entity<REF>, EntityClassType : EntityClass<REF, EntityType>> OptionalReferencedColumn<REF, EntityType, EntityClassType>.getValue(o: Entity<ID>, desc: KProperty<*>): OptionalAccessor<REF, EntityType, EntityID<REF>> {
+        @Suppress("UNCHECKED_CAST")
+        return OptionalAccessor(this as Column<EntityID<REF>?>, this.entityClass, o, references = null)
+    }
 }

@@ -226,12 +226,17 @@ val Column<*>.autoIncColumnType: AutoIncColumnType<*>?
 
 internal fun IColumnType<*>.rawSqlType(): IColumnType<*> = when (this) {
     is AutoIncColumnType -> delegate
-    is EntityIDColumnType<*> if idColumn.columnType is AutoIncColumnType -> idColumn.columnType.delegate
+    is EntityIDColumnType<*> -> {
+        val idColumnType = idColumn.columnType
+        if (idColumnType is AutoIncColumnType) idColumnType.delegate else this
+    }
+
     else -> this
 }
 
 /** Returns whether this column is registered to an [IdTable] and is that table's `id` column. */
 internal fun Column<*>.isEntityIdentifier(): Boolean {
+    val columnType = columnType
     if (columnType !is EntityIDColumnType<*>) return false
 
     val tableToCheck = ((table as? Alias<*>)?.delegate ?: table) as? IdTable<*>
@@ -1740,6 +1745,7 @@ interface JsonColumnMarker {
 
 /** Returns whether this column stores JSONB data in a format that requires casting to readable text when querying. */
 internal fun Column<*>.isJsonBColumnForCasting(): Boolean {
+    val columnType = columnType
     if (columnType !is JsonColumnMarker) return false
 
     return columnType.usesBinaryFormat && columnType.needsBinaryFormatCast

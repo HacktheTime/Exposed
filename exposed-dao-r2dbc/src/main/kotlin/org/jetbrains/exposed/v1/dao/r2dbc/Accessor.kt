@@ -45,7 +45,7 @@ class Accessor<ID : Any, Parent : Entity<ID>, REF : Any>(
     }
 
     /** Writes the link to [value] into the underlying [reference] column(s) and pins it in the entity's reference cache. */
-    fun set(value: Parent) {
+    infix fun set(value: Parent) {
         entity.requireTrackedByCurrentTransaction()
 
         if (entity.db != value.db) {
@@ -146,7 +146,7 @@ class OptionalAccessor<ID : Any, Parent : Entity<ID>, REF : Any>(
     }
 
     /** Writes the link to [value] (or clears it when `null`) into the underlying [reference] column(s). */
-    fun set(value: Parent?) {
+    infix fun set(value: Parent?) {
         entity.requireTrackedByCurrentTransaction()
 
         if (value != null) {

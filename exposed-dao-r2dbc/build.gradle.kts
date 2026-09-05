@@ -30,3 +30,12 @@ tasks.withType<KotlinCompile>().configureEach {
 tasks.withType<JavaCompile>().configureEach {
     targetCompatibility = "11"
 }
+val compileKotlin: KotlinCompile by tasks
+compileKotlin.compilerOptions {
+    freeCompilerArgs.set(
+        listOf(
+            "-XXLanguage:+ContextParameters",
+            "-opt-in=org.jetbrains.exposed.v1.dao.r2dbc.ExperimentalR2dbcDaoApi"
+        )
+    )
+}
