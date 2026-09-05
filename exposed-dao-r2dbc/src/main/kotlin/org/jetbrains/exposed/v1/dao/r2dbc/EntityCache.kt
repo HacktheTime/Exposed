@@ -148,6 +148,21 @@ class EntityCache(private val transaction: R2dbcTransaction) {
 
     internal fun dirtyValues(entity: Entity<*>): Map<Column<Any?>, Any?> = staged[entity]?.dirty.orEmpty()
 
+    /**
+     * Returns the combined set of values to persist for [entity]:
+     * staged dirty values (DB-defaults, etc.) merged with the entity's own [Entity.writeValues].
+     * [Entity.writeValues] wins on overlap so that user-set values and decomposed composite IDs
+     * take precedence over any residual staged defaults.
+     */
+    internal fun entityValues(entity: Entity<*>): Map<Column<Any?>, Any?> {
+        val staged = staged[entity]?.dirty.orEmpty()
+        if (entity.writeValues.isEmpty()) return staged
+        return LinkedHashMap<Column<Any?>, Any?>(staged.size + entity.writeValues.size).apply {
+            putAll(staged)
+            putAll(entity.writeValues)
+        }
+    }
+
     internal fun markFlushed(entity: Entity<*>) {
         staged[entity]?.let {
             it.flushed.putAll(it.dirty)
@@ -223,7 +238,10 @@ class EntityCache(private val transaction: R2dbcTransaction) {
             }
             outer.createdInScope.addAll(createdInScope)
         } else {
-            staged.forEach { (entity, values) -> entity.updateByCommittedValues(values.flushed + values.dirty) }
+            staged.forEach { (entity, values) ->
+                entity.updateByCommittedValues(values.flushed + values.dirty)
+                entity.writeValues.clear()
+            }
         }
         staged.releaseAll()
         createdInScope.clear()
@@ -232,7 +250,10 @@ class EntityCache(private val transaction: R2dbcTransaction) {
     internal fun discardUncommittedState() {
         createdInScope.forEach { entity ->
             removeFromIdentityMap(entity)
+            entity.writeValues.clear()
+            entity._readValues = null
         }
+        staged.forEach { (entity, _) -> entity.writeValues.clear() }
         staged.releaseAll()
         createdInScope.clear()
     }
@@ -457,7 +478,7 @@ class EntityCache(private val transaction: R2dbcTransaction) {
             // Snapshot writeValues before the batchInsert reads them, so we can merge
             // client-set values back into `_readValues` for drivers that only return
             // generated columns.
-            val stagedSnapshots = currentBatch.map { LinkedHashMap(dirtyValues(it)) }
+            val stagedSnapshots = currentBatch.map { LinkedHashMap(entityValues(it)) }
 
             // The Oracle R2DBC driver rejects a statement that both batches rows and asks for generated values
             // ("Batch execution returning generated values is not supported"), and the generated ids are exactly
@@ -466,11 +487,11 @@ class EntityCache(private val transaction: R2dbcTransaction) {
 
             val genRows = executeAsPartOfEntityLifecycle {
                 chunks.flatMap { chunk ->
-                    table.batchInsert(chunk) { entry ->
-                        for ((c, v) in dirtyValues(entry)) {
-                            this[c] = v
-                        }
+                table.batchInsert(chunk) { entry ->
+                    for ((c, v) in entityValues(entry)) {
+                        this[c] = v
                     }
+                }
                 }
             }
 
@@ -492,6 +513,7 @@ class EntityCache(private val transaction: R2dbcTransaction) {
                 values.dirty.clear()
                 values.stageRow(rereadRows[entity.id] ?: genRows[idx])
 
+                entity.storeWrittenValues()
                 store(entity)
                 transaction.registerChange(entity.klass, entity.id, EntityChangeType.Created)
             }
@@ -504,7 +526,7 @@ class EntityCache(private val transaction: R2dbcTransaction) {
         entities: List<Entity<*>>,
         table: IdTable<*>
     ): Pair<List<Entity<*>>, List<Entity<*>>> {
-        fun isAwaitingRowOfSameTable(entity: Entity<*>) = dirtyValues(entity).any { (column, value) ->
+        fun isAwaitingRowOfSameTable(entity: Entity<*>) = entityValues(entity).any { (column, value) ->
             column.referee == table.id && value is EntityID<*> && value._value == null
         }
 
@@ -514,10 +536,10 @@ class EntityCache(private val transaction: R2dbcTransaction) {
                 "to a row of that table that has not been inserted yet, so there is none to send first. " +
                 "Either those references form a cycle, or one points at an entity whose insert was withdrawn."
         }
-        val anchorColumns = dirtyValues(anchor).keys
+        val anchorColumns = entityValues(anchor).keys
 
         return entities.partition { entity ->
-            !isAwaitingRowOfSameTable(entity) && dirtyValues(entity).keys == anchorColumns
+            !isAwaitingRowOfSameTable(entity) && entityValues(entity).keys == anchorColumns
         }
     }
 
