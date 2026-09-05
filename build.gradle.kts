@@ -116,6 +116,8 @@ subprojects {
         // Detekt's bundled parser can't handle context parameter syntax (context(_: X)).
         exclude("**/MavenProjectGeneration.kt")
     }
+
+    pluginManager.withPlugin("org.jetbrains.dokka") { tasks.matching { it.name.startsWith("dokka", ignoreCase = true) }.configureEach { enabled = false } }
 }
 
 subprojects {
