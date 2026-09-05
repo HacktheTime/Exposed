@@ -47,7 +47,7 @@ import java.util.*
 @Suppress("UnusedPrivateMember", "SpreadOperator")
 class R2dbcConnectionImpl(
     override val connection: Publisher<out Connection>,
-    private val vendorDialect: String,
+    internal val vendorDialect: String,
     private val typeMapping: R2dbcTypeMapping
 ) : R2dbcExposedConnection<Publisher<out Connection>> {
     private val metadataProvider: MetadataProvider = MetadataProvider.getProvider(vendorDialect)
@@ -227,6 +227,17 @@ class R2dbcConnectionImpl(
             metadataImpl = R2dbcDatabaseMetadataImpl(getCatalog(), this, vendorDialect)
         }
         metadataImpl!!.body()
+    }
+
+    /**
+     * Reads the raw R2DBC [io.r2dbc.spi.ConnectionMetadata] directly from the connection,
+     * without calling [getCatalog] (which requires a transaction context).
+     *
+     * Used by [R2dbcDatabase.cacheMetadata] to pre-cache metadata values during connection setup,
+     * before the transaction context may be fully established on the current thread.
+     */
+    suspend fun readConnectionMetadata(): io.r2dbc.spi.ConnectionMetadata = withConnection {
+        this.metadata
     }
 
     private val localConnectionLock = Mutex()
