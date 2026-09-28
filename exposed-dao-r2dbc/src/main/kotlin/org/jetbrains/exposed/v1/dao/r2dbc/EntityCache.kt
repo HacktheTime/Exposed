@@ -5,6 +5,8 @@ import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Key
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.Table
+import org.jetbrains.exposed.v1.core.dao.id.CompositeID
+import org.jetbrains.exposed.v1.core.dao.id.CompositeIdTable
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.dao.id.IdTable
 import org.jetbrains.exposed.v1.core.inList
@@ -504,6 +506,9 @@ class EntityCache(private val transaction: R2dbcTransaction) {
             // The ids are known by now, so that is one query for the batch rather than one per row.
             val rereadRows = if (incompleteIds.isEmpty()) {
                 emptyMap()
+            } else if (table is CompositeIdTable) {
+                val compositeIds = incompleteIds.mapNotNull { (it._value as? CompositeID) }
+                table.selectAll().where { table.id inList compositeIds }.toList().associateBy { it[table.id] }
             } else {
                 table.selectAll().where { table.id inList incompleteIds }.toList().associateBy { it[table.id] }
             }

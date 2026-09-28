@@ -153,6 +153,11 @@ open class Entity<ID : Any>(val id: EntityID<ID>) {
                     else -> defaultValueFun?.invoke() as T
                 }
             }
+            _readValues == null -> error(
+                "Cannot access column $name: the entity has no committed values. " +
+                    "It may have been created with a defaultExpression column that was not loaded from the database. " +
+                    "Call suspend refresh() to load the entity's current state from the database."
+            )
             else -> readValues[this]
         }
     }
@@ -280,6 +285,9 @@ open class Entity<ID : Any>(val id: EntityID<ID>) {
                     v
                 }
                 _readValues!![c] = unwrappedValue
+            }
+            if (klass.dependsOnColumns.any { it.table == klass.table && !_readValues!!.hasValue(it) }) {
+                _readValues = null
             }
         }
         writeValues.clear()

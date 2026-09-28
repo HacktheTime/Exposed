@@ -751,6 +751,7 @@ public final class org/jetbrains/exposed/v1/r2dbc/statements/R2dbcConnectionImpl
 	public fun metadata (Lkotlin/jvm/functions/Function2;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public fun prepareStatement (Ljava/lang/String;ZLkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public fun prepareStatement (Ljava/lang/String;[Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun readConnectionMetadata (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public fun releaseSavepoint (Lorg/jetbrains/exposed/v1/core/statements/api/ExposedSavepoint;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public fun rollback (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public fun rollback (Lorg/jetbrains/exposed/v1/core/statements/api/ExposedSavepoint;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;

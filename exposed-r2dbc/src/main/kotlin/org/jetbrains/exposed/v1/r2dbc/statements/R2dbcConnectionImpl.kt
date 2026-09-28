@@ -246,6 +246,19 @@ class R2dbcConnectionImpl(
     @Suppress("TooGenericExceptionCaught")
     private suspend fun <T> withConnection(body: suspend Connection.() -> T): T {
         val acquiredConnection = localConnectionLock.withLock {
+            // Check if cached connection is still valid; if not, discard it and acquire a fresh one
+            val cached = localConnection
+            if (cached != null) {
+                val isValid = runCatching {
+                    cached.validate(ValidationDepth.LOCAL).awaitSingle()
+                }.getOrDefault(false)
+
+                if (!isValid) {
+                    releaseConnection(cached)
+                    localConnection = null
+                }
+            }
+
             localConnection ?: withContext(NonCancellable) { connection.awaitLast() }.also { cx ->
                 try {
                     // beginTransaction() starts an explicit transaction with autoCommit mode off
