@@ -529,12 +529,13 @@ abstract class SchemaUtilityApi {
                         else -> dataTypeProvider.processForDefaultValue(exp)
                     }
                     else -> {
-                        when (column.columnType) {
+                        val columnType = column.columnType
+                        when (columnType) {
                             is JsonColumnMarker -> {
                                 val processed = dataTypeProvider.processForDefaultValue(exp)
                                 when (this) {
                                     is PostgreSQLDialect -> {
-                                        if (column.columnType.usesBinaryFormat) {
+                                        if (columnType.usesBinaryFormat) {
                                             processed.replace(Regex("([\"}])([:,])([\\[{\"])"), "$1$2 $3")
                                         } else {
                                             processed
@@ -552,7 +553,7 @@ abstract class SchemaUtilityApi {
                                 (value as List<*>)
                                     .takeIf { it.isNotEmpty() }
                                     ?.run {
-                                        val delegateColumnType = column.columnType.delegate as IColumnType<Any>
+                                        val delegateColumnType = columnType.delegate as IColumnType<Any>
                                         val delegateColumn = (column as Column<Any?>).withColumnType(delegateColumnType)
                                         val processed = map {
                                             if (delegateColumn.columnType is StringColumnType) {

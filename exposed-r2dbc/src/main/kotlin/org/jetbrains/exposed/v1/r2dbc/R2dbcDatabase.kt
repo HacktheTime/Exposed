@@ -13,10 +13,12 @@ import org.jetbrains.exposed.v1.core.vendors.*
 import org.jetbrains.exposed.v1.r2dbc.statements.R2dbcConnectionImpl
 import org.jetbrains.exposed.v1.r2dbc.statements.api.R2dbcExposedConnection
 import org.jetbrains.exposed.v1.r2dbc.statements.api.R2dbcExposedDatabaseMetadata
+import org.jetbrains.exposed.v1.r2dbc.statements.api.R2dbcIdentifierManager
 import org.jetbrains.exposed.v1.r2dbc.statements.api.R2dbcLocalMetadataImpl
 import org.jetbrains.exposed.v1.r2dbc.transactions.R2dbcTransactionManager
 import org.jetbrains.exposed.v1.r2dbc.transactions.TransactionManager
 import org.jetbrains.exposed.v1.r2dbc.vendors.*
+import org.jetbrains.exposed.v1.r2dbc.vendors.metadata.MetadataProvider
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -53,8 +55,13 @@ class R2dbcDatabase private constructor(
      * returns the retrieved metadata as a result, with the metadata most likely originating from the connection instance
      * itself. Metadata retrieval that requires sending a query to the database will not be accepted. If called outside
      * a transaction block, a temporary connection is instantiated to call [body] before being closed.
+     *
+     * The inner coroutine work (R2DBC connection creation and metadata reading) runs on Reactor's own scheduler
+     * threads and does not need the caller's dispatcher, so deadlocks with limited dispatchers are avoided
+     * even without an explicit dispatcher override.
      */
-    internal fun <T> connectionMetadata(body: R2dbcExposedDatabaseMetadata.() -> T): T = runBlocking { metadata(body) }
+    internal fun <T> connectionMetadata(body: R2dbcExposedDatabaseMetadata.() -> T): T =
+        runBlocking { metadata(body) }
 
     /**
      * Calls the specified function [body] with an [R2dbcLocalMetadataImpl] implementation as its receiver and
@@ -63,6 +70,47 @@ class R2dbcDatabase private constructor(
      * @throws IllegalStateException If metadata retrieval requires either a connection or sending a query to the database.
      */
     internal fun <T> localMetadata(body: R2dbcLocalMetadataImpl.() -> T): T = localMetadata.body()
+
+    /**
+     * Pre-caches database metadata values using the provided [connection] to avoid using `runBlocking`
+     * in property accessors, which can cause freezes when called from a coroutine context.
+     *
+     * This reads directly from the R2DBC [io.r2dbc.spi.ConnectionMetadata] SPI, bypassing
+     * [R2dbcConnectionImpl.metadata] which requires a transaction context for [getCatalog].
+     *
+     * This should be called during the first transaction connection setup.
+     */
+    internal suspend fun cacheMetadata(connection: R2dbcExposedConnection<*>) {
+        val connImpl = connection as? R2dbcConnectionImpl ?: return
+        val connMetadata = connImpl.readConnectionMetadata()
+
+        if (cachedVendor == null) {
+            cachedVendor = resolvedVendor ?: run {
+                val productName = connMetadata.databaseProductName
+                when {
+                    productName == "MySQL Community Server - GPL" ||
+                        productName == "MySQL Community Server (GPL)" -> MysqlDialect.dialectName
+                    productName == "MariaDB" -> MariaDBDialect.dialectName
+                    productName == "H2" -> H2Dialect.dialectName
+                    productName == "PostgreSQL" -> PostgreSQLDialect.dialectName
+                    productName == "Oracle" -> OracleDialect.dialectName
+                    productName.startsWith("Microsoft Azure SQL ") ||
+                        productName.startsWith("Microsoft SQL Server ") -> SQLServerDialect.dialectName
+                    else -> connImpl.vendorDialect
+                }
+            }
+        }
+        if (cachedVersion == null) {
+            cachedVersion = Version.from(connMetadata.databaseVersion)
+        }
+        if (cachedFullVersion == null) {
+            cachedFullVersion = connMetadata.databaseVersion
+        }
+        if (cachedIdentifierManager == null) {
+            val metadataProvider = MetadataProvider.getProvider(cachedVendor ?: resolvedVendor ?: "")
+            cachedIdentifierManager = R2dbcIdentifierManager(metadataProvider, connMetadata)
+        }
+    }
 
     private val localMetadata by lazy {
         resolvedVendor?.let { R2dbcLocalMetadataImpl("", it) }
@@ -74,9 +122,13 @@ class R2dbcDatabase private constructor(
     override val url: String
         get() = connectionUrl
 
-    override val vendor: String by lazy {
-        resolvedVendor ?: connectionMetadata { getDatabaseDialectName() }
-    }
+    @Volatile
+    private var cachedVendor: String? = null
+
+    override val vendor: String
+        get() = cachedVendor
+            ?: resolvedVendor
+            ?: connectionMetadata { getDatabaseDialectName() }.also { cachedVendor = it }
 
     override val dialect: DatabaseDialect by lazy {
         config.explicitDialect
@@ -106,9 +158,17 @@ class R2dbcDatabase private constructor(
         }
     }
 
-    override val version: Version by lazy { connectionMetadata { getVersion() } }
+    @Volatile
+    private var cachedVersion: Version? = null
 
-    override val fullVersion: String by lazy { connectionMetadata { getDatabaseProductVersion() } }
+    override val version: Version
+        get() = cachedVersion ?: connectionMetadata { getVersion() }.also { cachedVersion = it }
+
+    @Volatile
+    private var cachedFullVersion: String? = null
+
+    override val fullVersion: String
+        get() = cachedFullVersion ?: connectionMetadata { getDatabaseProductVersion() }.also { cachedFullVersion = it }
 
     override val supportsAlterTableWithAddColumn: Boolean by lazy { localMetadata { supportsAlterTableWithAddColumn } }
 
@@ -118,7 +178,11 @@ class R2dbcDatabase private constructor(
 
     override val supportsSelectForUpdate: Boolean by lazy { localMetadata { supportsSelectForUpdate } }
 
-    override val identifierManager: IdentifierManagerApi by lazy { connectionMetadata { identifierManager } }
+    @Volatile
+    private var cachedIdentifierManager: IdentifierManagerApi? = null
+
+    override val identifierManager: IdentifierManagerApi
+        get() = cachedIdentifierManager ?: connectionMetadata { identifierManager }.also { cachedIdentifierManager = it }
 
     companion object {
 

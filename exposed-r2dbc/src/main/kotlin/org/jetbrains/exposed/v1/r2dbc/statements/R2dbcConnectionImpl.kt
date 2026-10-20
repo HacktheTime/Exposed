@@ -46,7 +46,7 @@ import java.util.*
 @Suppress("UnusedPrivateMember", "SpreadOperator")
 class R2dbcConnectionImpl(
     override val connection: Publisher<out Connection>,
-    private val vendorDialect: String,
+    internal val vendorDialect: String,
     private val typeMapping: R2dbcTypeMapping
 ) : R2dbcExposedConnection<Publisher<out Connection>> {
     private val metadataProvider: MetadataProvider = MetadataProvider.getProvider(vendorDialect)
@@ -228,12 +228,36 @@ class R2dbcConnectionImpl(
         metadataImpl!!.body()
     }
 
+    /**
+     * Reads the raw R2DBC [io.r2dbc.spi.ConnectionMetadata] directly from the connection,
+     * without calling [getCatalog] (which requires a transaction context).
+     *
+     * Used by [R2dbcDatabase.cacheMetadata] to pre-cache metadata values during connection setup,
+     * before the transaction context may be fully established on the current thread.
+     */
+    suspend fun readConnectionMetadata(): io.r2dbc.spi.ConnectionMetadata = withConnection {
+        this.metadata
+    }
+
     private val localConnectionLock = Mutex()
     private var localConnection: Connection? = null
 
     @Suppress("TooGenericExceptionCaught")
     private suspend fun <T> withConnection(body: suspend Connection.() -> T): T {
         val acquiredConnection = localConnectionLock.withLock {
+            // Check if cached connection is still valid; if not, discard it and acquire a fresh one
+            val cached = localConnection
+            if (cached != null) {
+                val isValid = runCatching {
+                    cached.validate(ValidationDepth.LOCAL).awaitSingle()
+                }.getOrDefault(false)
+
+                if (!isValid) {
+                    releaseConnection(cached)
+                    localConnection = null
+                }
+            }
+
             localConnection ?: withContext(NonCancellable) { connection.awaitLast() }.also { cx ->
                 try {
                     // beginTransaction() starts an explicit transaction with autoCommit mode off

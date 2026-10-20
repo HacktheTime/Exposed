@@ -198,6 +198,7 @@ class TransactionManager(
                             )
                         )
                     }
+                    db.cacheMetadata(this)
                 } catch (e: Exception) {
                     try {
                         close()
